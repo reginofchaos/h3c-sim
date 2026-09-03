@@ -780,11 +780,29 @@ function run() {
   console.log('\n=== 六、关于面板与版本管理 ===');
   const AB = (window.H3C && window.H3C.ABOUT) || {};
   ok(AB && typeof AB === 'object', 'H.ABOUT 已挂载到 window.H3C');
-  ok(AB.version === '1.4.0', '当前版本号为 1.4.0', 'got ' + AB.version);
+  ok(AB.version === '1.4.1', '当前版本号为 1.4.1', 'got ' + AB.version);
   ok(AB.contact === 'zyztonorrow@qq.com', '联系方式为 zyztonorrow@qq.com');
   ok(/github\.com/.test(AB.github || ''), '包含 GitHub 仓库地址');
   ok(Array.isArray(AB.changelog) && AB.changelog.length >= 5, '更新日志含 >=5 个版本（1.0.0 起）');
-  ok(AB.changelog[0].version === '1.4.0', '更新日志最新条目为当前版本 1.4.0');
+  ok(AB.changelog[0].version === AB.version, '更新日志最新条目 == 当前版本号',
+    'changelog[0]=' + (AB.changelog[0] || {}).version + ' version=' + AB.version);
+  ok(AB.updated === AB.changelog[0].date, 'updated 日期 == 最新条目日期',
+    'updated=' + AB.updated + ' date=' + AB.changelog[0].date);
+  // 三处数据源一致性（曾漏同步：version 升到 1.4.1 但 changelog 仍停在 1.4.0）
+  try {
+    var vjson = JSON.parse(fs.readFileSync(path.join(ROOT, 'version.json'), 'utf8'));
+    ok(vjson.version === AB.version, 'version.json 与 version.js 版本号一致',
+      'json=' + vjson.version + ' js=' + AB.version);
+    ok(Array.isArray(vjson.changelog) && vjson.changelog.length === AB.changelog.length &&
+      vjson.changelog[0].version === AB.changelog[0].version,
+      'version.json 与 version.js 更新日志同步（条目数 + 最新版）',
+      'json=' + vjson.changelog.length + '/' + vjson.changelog[0].version +
+      ' js=' + AB.changelog.length + '/' + AB.changelog[0].version);
+    var mdSrc = fs.readFileSync(path.join(ROOT, 'CHANGELOG.md'), 'utf8');
+    var mdM = mdSrc.match(/^##\s*\[([0-9][0-9.]*)\]/m);
+    ok(mdM && mdM[1] === AB.version, 'CHANGELOG.md 最新条目版本 == 当前版本',
+      'md=' + (mdM ? mdM[1] : 'none') + ' version=' + AB.version);
+  } catch (e3) { ok(false, '三处版本数据源一致性断言', e3.message); }
   // 点击「关于」按钮应渲染关于面板且无异常
   try {
     const aboutBtn = doc.querySelector('[data-act="about"]');

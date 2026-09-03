@@ -9,6 +9,18 @@
   "license": "教学用途 · 自由用于课堂实验",
   "changelog": [
     {
+      "version": "1.4.1",
+      "date": "2026-09-03",
+      "title": "ping / tracert 命令去歧义 + 关于面板收尾",
+      "changes": [
+        "修复系统视图下 ping 192.168.10.10 报 Error: Ambiguous command 的问题（ping <ip> 与 ping <word> 同时匹配）；tracert 同步修复",
+        "引擎新增 <host> token：接受 IPv4 地址或主机名，一条命令同时覆盖「ping IP」与「ping 主机名」",
+        "关于面板移除「当前版本」行后清理残留死变量",
+        "新增 .gitattributes，全仓统一 LF，根治 Contents API 同步把 CRLF 推上远程的问题",
+        "回归测试 verify.js 达 210 项断言全通过"
+      ]
+    },
+    {
       "version": "1.4.0",
       "date": "2026-09-03",
       "title": "关于面板 + 迭代版本管理 + GitHub 发布",
