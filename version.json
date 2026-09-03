@@ -1,0 +1,81 @@
+{
+  "appName": "H3C 网络仿真实验室",
+  "subtitle": "岳阳科技职业学院 · 《计算机网络设备配置》课程仿真终端",
+  "author": "岳阳科技职业学院 计算机网络教学组",
+  "contact": "zyztonorrow@qq.com",
+  "github": "https://github.com/reginofchaos/h3c-sim",
+  "version": "1.4.0",
+  "updated": "2026-09-03",
+  "license": "教学用途 · 自由用于课堂实验",
+  "changelog": [
+    {
+      "version": "1.4.0",
+      "date": "2026-09-03",
+      "title": "关于面板 + 迭代版本管理 + GitHub 发布",
+      "changes": [
+        "新增「关于」按钮（位于帮助按钮旁）：展示作者、联系方式、GitHub 仓库地址、当前版本号与更新日志",
+        "建立迭代版本号管理机制（自 1.0.0 起，按日汇总版本跨度，回滚修改不记录）",
+        "新增 version.json / js/core/version.js（运行时版本数据源）/ CHANGELOG.md（GitHub 展示）",
+        "初始化 Git 仓库并发布至 GitHub（reginofchaos/h3c-sim），建立 Release 与版本标签",
+        "约定：以后每次更新自动更新版本号与更新记录，并同步 GitHub"
+      ]
+    },
+    {
+      "version": "1.3.0",
+      "date": "2026-09-03",
+      "title": "自查修复：tracert 逐跳显示",
+      "changes": [
+        "修复 tracert / tracert6 只显示目的地、不逐跳展开的问题（现正确逐跳展开中间路由器）",
+        "IPv6 双栈模块全覆盖自检，无新增缺陷",
+        "回归测试 verify.js 达 180 项断言全通过"
+      ]
+    },
+    {
+      "version": "1.2.0",
+      "date": "2026-09-02",
+      "title": "IS-IS 路由进程 + Route-Policy",
+      "changes": [
+        "IS-IS 路由进程（is-level / network-entity / import-route），接口 isis enable / cost / circuit-level / circuit-type",
+        "Route-Policy 多节点（if-match acl|ip-prefix、apply cost|preference|tag|next-hop）真实过滤与改写路由属性",
+        "新增场景 6：IS-IS + Route-Policy 实验",
+        "修复 display isis peer 主机名显示、undo route-policy 节点删除失败",
+        "回归测试 verify.js 达 142 项断言全通过"
+      ]
+    },
+    {
+      "version": "1.1.0",
+      "date": "2026-09-01",
+      "title": "广域网 / NAT / VRRP / IPv6 四大模块 + 体验修复",
+      "changes": [
+        "广域网接入模块(WAN)：Serial 口 PPP/HDLC 封装、PAP/CHAP 认证与状态机",
+        "NAT 地址转换：地址池 / NAPT / 静态 NAT / 内部服务器(DNAT) + 真实转发与会话表",
+        "VRRP 网关冗余：主备选举、虚拟网关、故障切换与抢占",
+        "IPv6 双栈端到端转发：ipv6 地址 / 静态路由、forwardPath6、真实 ping6 / tracert6、display ipv6 *",
+        "拓扑 UI 优化：设备动态宽度、链路标签浮层、面板重显按钮、右侧设备详情",
+        "保存/导出三重兜底（File System Access API / msSaveOrOpenBlob / 手动复制弹窗）",
+        "4 个场景增加「实验目标 / 步骤 / 预期」",
+        "CLI 修复：help 列表显示完整子句、dis cu 展示已连默认端口、接口名四种写法统一解析",
+        "修复 IF_ABBR 与 Serial 端口名冲突、undo route-policy 死命令等",
+        "回归测试 verify.js 由 73 项提升至 172 项全通过"
+      ]
+    },
+    {
+      "version": "1.0.0",
+      "date": "2026-08-31",
+      "title": "项目立项 / 核心首发",
+      "changes": [
+        "纯前端 H3C Comware 风格交换机 / 路由器仿真终端（无框架、无构建步骤、原生 JS）",
+        "核心转发引擎：L2/L3 转发、STP、ping / tracert 全网仿真",
+        "CLI 引擎：视图体系、? 帮助、Tab 补全、历史、undo",
+        "命令模块：基础管理 / 二层(VLAN/STP/聚合/镜像) / 三层 / 静态·RIP·OSPF·BGP 路由 / ACL / QoS / 安全(AAA/SSH/Telnet/802.1X) / 网络管理(SNMP/NTP/日志) / 监控(display 系列)",
+        "拓扑编辑器：拖拽添加、端口到端口连线、链路状态指示、设备删除 / 重置",
+        "工程存取：保存/读取(localStorage)、保存/打开工程文件(.json)、导出/导入 .cfg 配置",
+        "PC / Server 主机 CLI（ipconfig / ping / tracert / set ip 等）",
+        "4 个实验教学场景",
+        "回归测试脚本 verify.js（73 项断言）",
+        "修复 monitor.js 语法错误、state.js 导出漏字段、sim.js 数据指向错误、loadScenario 连线索引错位、sysname 视图受限、新建设备默认 hostname 等"
+      ],
+      "note": "2026-08-31 当日曾对拓扑 UI 做一轮优化后又整体回滚，按「回滚的修改不记录」约定未列入本日志。"
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+# 操作系统 / 编辑器
+.DS_Store
+Thumbs.db
+*.swp
+*~
+.idea/
+.vscode/
+
+# 依赖（本仓库为纯前端、无构建步骤，不使用 node_modules）
+node_modules/
+
+# 本地工作目录元数据（若存在）
+.workbuddy/
+
+# 误提交的大文件 / 临时产物
+*.log
+tmp/

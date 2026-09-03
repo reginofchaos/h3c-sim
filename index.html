@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>H3C 网络仿真实验室 · 岳科院教学工作</title>
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+  <!-- 顶部工具栏 -->
+  <header id="toolbar">
+    <div class="tb-left">
+      <span class="logo">H3C<span class="logo-sub">SIM</span></span>
+      <input id="topo-title" class="title-input" type="text" value="未命名拓扑" title="拓扑名称" />
+    </div>
+    <div class="tb-center">
+      <button class="btn" data-act="save" title="保存到浏览器本地（localStorage）">保存</button>
+      <button class="btn" data-act="load" title="从浏览器本地读取（localStorage）">读取</button>
+      <span class="tb-sep"></span>
+      <button class="btn" data-act="save-file" title="导出工程文件到本地（.json，保存对话框可选位置）">保存文件</button>
+      <button class="btn" data-act="open-file" title="从本地打开工程文件（.json）">打开文件</button>
+      <button class="btn" data-act="export" title="导出全部设备配置为 .cfg">导出配置</button>
+      <button class="btn" data-act="import-cfg" title="导入 .cfg 配置文件并还原到设备">导入配置</button>
+      <span class="tb-sep"></span>
+      <button class="btn" data-act="clear" title="清空拓扑">清空</button>
+      <button class="btn" data-act="reset" title="重置整个仿真实验室（清空并清除本地保存）">重置</button>
+      <span class="tb-sep"></span>
+      <button class="btn" data-act="scenario">实验场景 ▾</button>
+      <span class="tb-sep"></span>
+      <button class="btn" id="btn-linkmode" data-act="linkmode" title="开启后依次点击两个设备自动连线">连线模式</button>
+      <button class="btn" data-act="fit" title="缩放至适应窗口">适应</button>
+    </div>
+    <div class="tb-right">
+      <span id="zoom-label" class="zoom-label">100%</span>
+      <button class="btn icon" data-act="zoom-out" title="缩小">－</button>
+      <button class="btn icon" data-act="zoom-in" title="放大">＋</button>
+      <button class="btn" data-act="about" title="关于本软件">关于</button>
+      <button class="btn" data-act="help" title="使用帮助">帮助</button>
+    </div>
+  </header>
+
+  <!-- 主工作区：设备库 / 实验说明 / 拓扑画布 / 端口详情 -->
+  <div id="main">
+    <!-- 左侧：设备调色板 / 图例 -->
+    <aside id="palette">
+      <div class="v-resizer" data-resize="palette"></div>
+      <div class="panel-h palette-h">
+        <button class="panel-toggle" data-panel="palette" title="隐藏设备库">«</button>
+        <span>设备库</span>
+      </div>
+      <div id="palette-list" class="palette-list"></div>
+
+      <div class="panel-h"><span>拓扑图例</span></div>
+      <div class="legend">
+        <div class="legend-row"><span class="led up"></span>端口 UP / 转发</div>
+        <div class="legend-row"><span class="led block"></span>STP 阻塞</div>
+        <div class="legend-row"><span class="led down"></span>端口 DOWN</div>
+        <div class="legend-row"><span class="led none"></span>未连接</div>
+      </div>
+
+      <div class="panel-h"><span>连线状态</span></div>
+      <div class="legend">
+        <div class="legend-row"><span class="line-swatch up"></span>链路 UP</div>
+        <div class="legend-row"><span class="line-swatch block"></span>链路阻塞</div>
+        <div class="legend-row"><span class="line-swatch down"></span>链路 DOWN</div>
+      </div>
+      <div class="hint" id="linking-banner" style="display:none"></div>
+    </aside>
+
+    <!-- 实验说明（设备库右侧，可调整宽度） -->
+    <aside id="scenario">
+      <div class="v-resizer" data-resize="scenario"></div>
+      <div class="panel-h">
+        <span>实验说明</span>
+        <button class="panel-toggle" data-panel="scenario" title="隐藏/显示实验说明">»</button>
+      </div>
+      <div id="scn-info" class="scn-info"></div>
+    </aside>
+
+    <!-- 中部：拓扑画布 -->
+    <main id="stage">
+      <svg id="topo" xmlns="http://www.w3.org/2000/svg">
+        <g id="viewport">
+          <g id="layer-grid"></g>
+          <g id="layer-links"></g>
+          <g id="layer-nodes"></g>
+          <g id="layer-labels"></g>
+        </g>
+      </svg>
+      <div id="stage-tip" class="stage-tip">从左侧拖拽设备到画布，或点击「实验场景」加载示例拓扑</div>
+      <div id="node-actions" class="node-actions" style="display:none">
+        <button class="btn danger" id="node-del" title="删除当前选中的设备">🗑 删除选中设备</button>
+      </div>
+    </main>
+
+    <!-- 右侧：设备检视器 -->
+    <aside id="inspector">
+      <div class="v-resizer" data-resize="inspector"></div>
+      <div class="panel-h">
+        <span>端口详情</span>
+        <button class="panel-toggle" data-panel="inspector" title="隐藏/显示详情">»</button>
+      </div>
+      <div id="inspector-empty" class="inspector-empty">
+        <div class="big">未选中设备</div>
+        <div class="sub">点击拓扑中的设备查看端口与状态</div>
+      </div>
+      <div id="inspector-body" class="inspector-body" style="display:none"></div>
+    </aside>
+  </div>
+
+  <!-- 底部：多设备 CLI 终端 -->
+  <section id="terminal">
+    <div class="term-resizer" id="term-resizer" title="拖拽调整终端高度"></div>
+    <div class="term-bar">
+      <div id="term-tabs" class="term-tabs"></div>
+      <button id="term-toggle" class="term-toggle" title="隐藏/显示终端">▾</button>
+    </div>
+    <div id="term-screen" class="term-screen"></div>
+    <div class="term-input-row">
+      <span id="term-prompt" class="term-prompt">&lt;H3C&gt;</span>
+      <input id="term-input" class="term-input" type="text" autocomplete="off" spellcheck="false" />
+    </div>
+  </section>
+
+  <!-- 侧栏/终端隐藏后，在边缘显示「重新显示」悬浮按钮（由 CSS 控制仅在对应面板隐藏时出现） -->
+  <button id="show-palette" class="show-panel" data-panel="palette" title="显示设备库">设备库</button>
+  <button id="show-scenario" class="show-panel" data-panel="scenario" title="显示实验说明">实验说明</button>
+  <button id="show-inspector" class="show-panel" data-panel="inspector" title="显示设备详情">设备详情</button>
+  <button id="show-terminal" class="show-panel" data-panel="terminal" title="显示终端">终端</button>
+
+  <!-- 帮助弹窗 -->
+  <div id="modal" class="modal" style="display:none">
+    <div class="modal-box">
+      <div class="modal-h"><span id="modal-title">使用帮助</span> <button class="btn close" id="modal-close">×</button></div>
+      <div class="modal-c" id="modal-c"></div>
+    </div>
+  </div>
+
+  <!-- 手动保存弹窗：当浏览器拦截 blob:/data: URL 下载时兜底 -->
+  <div id="save-modal" class="modal" style="display:none">
+    <div class="modal-box">
+      <div class="modal-h">手动保存 <button class="btn close" id="save-modal-close">×</button></div>
+      <div class="modal-c">
+        <p style="margin-bottom:10px">当前环境无法自动弹出保存对话框。请复制以下内容，粘贴到记事本后保存为 <b id="save-filename"></b>：</p>
+        <textarea id="save-text" readonly style="width:100%;height:220px;font-family:Consolas,monospace;font-size:12px;background:#0a0e14;color:#c8d3e0;border:1px solid #2a3340;border-radius:6px;padding:8px;resize:vertical;"></textarea>
+        <div style="margin-top:10px;text-align:right">
+          <button class="btn" id="save-copy">复制全部内容</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 脚本按依赖顺序加载（无构建步骤，原生 JS） -->
+  <script src="js/core/utils.js"></script>
+  <script src="js/core/version.js"></script>
+  <script src="js/core/models.js"></script>
+  <script src="js/core/state.js"></script>
+  <script src="js/core/engine.js"></script>
+  <script src="js/core/host.js"></script>
+  <script src="js/core/sim.js"></script>
+  <script src="js/cmds/base.js"></script>
+  <script src="js/cmds/l2.js"></script>
+  <script src="js/cmds/l3.js"></script>
+  <script src="js/cmds/route.js"></script>
+  <script src="js/cmds/wan.js"></script>
+  <script src="js/cmds/nat.js"></script>
+  <script src="js/cmds/acl.js"></script>
+  <script src="js/cmds/qos.js"></script>
+  <script src="js/cmds/sec.js"></script>
+  <script src="js/cmds/nms.js"></script>
+  <script src="js/cmds/monitor.js"></script>
+  <script src="js/cmds/config.js"></script>
+  <script src="js/ui/topology.js"></script>
+  <script src="js/ui/terminal.js"></script>
+  <script src="js/ui/app.js"></script>
+</body>
+</html>
