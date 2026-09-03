@@ -727,6 +727,46 @@ function run() {
     ok(/No IPv6 neighbor entry found/.test(nd2.out || ''), 'reset 后 R1 ND 表为空');
   }
 
+  /* ---------------- 四·K、ping/tracert 命令模式去歧义（BUG：IPv4 地址同时匹配 <ip> 与 <word>） ---------------- */
+  console.log('\n=== 四·K、ping / tracert 命令去歧义 ===');
+  // 在 system 视图对任意设备执行 ping 命令，不应报歧义错误
+  var firstSw = null;
+  S.S.devices.forEach(function (d) {
+    if (!firstSw && (d.model === 'S5130-28S-EI' || d.model === 'MSR36-20' || d.model === 'S6850-20')) firstSw = d;
+  });
+  ok(!!firstSw, '找到一个用于 ping 去歧义测试的设备');
+  if (firstSw) {
+    var swSessPing = S.getSession(firstSw.id);
+    function runOne(line) {
+      E.exec(firstSw, swSessPing, 'system-view');
+      var r = E.exec(firstSw, swSessPing, line);
+      E.exec(firstSw, swSessPing, 'quit'); E.exec(firstSw, swSessPing, 'quit');
+      return r || {};
+    }
+    var r1 = runOne('ping 192.168.10.10');
+    ok(!/Ambiguous command/i.test((r1.err || '') + (r1.out || '')),
+      '系统视图 ping 192.168.10.10 不报歧义', 'err=' + r1.err);
+    var r2 = runOne('tracert 192.168.10.10');
+    ok(!/Ambiguous command/i.test((r2.err || '') + (r2.out || '')),
+      '系统视图 tracert 192.168.10.10 不报歧义', 'err=' + r2.err);
+    var r3 = runOne('ping -c 3 192.168.10.10');
+    ok(!/Ambiguous command/i.test((r3.err || '') + (r3.out || '')),
+      '系统视图 ping -c 3 192.168.10.10 不报歧义', 'err=' + r3.err);
+    var r4 = runOne('tracert -a 1.1.1.1 192.168.10.10');
+    ok(!/Ambiguous command/i.test((r4.err || '') + (r4.out || '')),
+      '系统视图 tracert -a 1.1.1.1 192.168.10.10 不报歧义', 'err=' + r4.err);
+    ok(/Ping\s+192\.168\.10\.10/i.test(r1.out || ''),
+      'ping 192.168.10.10 正常输出 Ping 头', 'len=' + (r1.out || '').length);
+  }
+  // 源码层面：确保冗余的 <word> 模式已移除，并启用了新的 <host>
+  var monSrc = fs.readFileSync(path.join(ROOT, 'js/cmds/monitor.js'), 'utf8');
+  ok(!/pat:\s*'ping <word>'/.test(monSrc), 'ping 命令已移除冗余的 <word> 模式');
+  ok(!/pat:\s*'tracert <word>'/.test(monSrc), 'tracert 命令已移除冗余的 <word> 模式');
+  ok(/pat:\s*'ping <host>'/.test(monSrc), 'ping 顶层命令模式改为 <host>');
+  ok(/pat:\s*'tracert <host>'/.test(monSrc), 'tracert 顶层命令模式改为 <host>');
+  var engSrc = fs.readFileSync(path.join(ROOT, 'js/core/engine.js'), 'utf8');
+  ok(/host:\s*\{[^}]*U\.isIp\(v\)/.test(engSrc), 'engine 新增 <host> token（接受 IPv4 或主机名）');
+
   /* ---------------- 五、CSS 变量与布局 ---------------- */
   console.log('\n=== 五、可调宽度的 CSS 变量 ===');
   const css = fs.readFileSync(path.join(ROOT, 'css/style.css'), 'utf8');

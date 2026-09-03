@@ -1403,40 +1403,32 @@
 
   /* ==================== ping / tracert ==================== */
   R({
-    views: ['*'], pat: 'ping <ip>', global: true, seq: 'diag',
-    help: '测试网络连通性',
+    views: ['*'], pat: 'ping <host>', global: true, seq: 'diag',
+    help: '测试到目的主机（IPv4 地址/主机名）的连通性',
     run: function (c) {
-      var r = Sim().ping(c.dev, c.args.ip, {});
+      var r = Sim().ping(c.dev, c.args.host, {});
       return { out: r.out, refresh: false };
     }
   });
   R({
-    views: ['*'], pat: 'ping <word>', global: true, hidden: true, seq: 'diag',
-    help: '按主机名测试连通性',
-    run: function (c) {
-      var r = Sim().ping(c.dev, c.args.word, {});
-      return { out: r.out, refresh: false };
-    }
-  });
-  R({
-    views: ['*'], pat: 'ping -c <int> <ip>', global: true, seq: 'diag',
+    views: ['*'], pat: 'ping -c <int> <host>', global: true, seq: 'diag',
     help: '指定发包数量测试连通性',
     run: function (c) {
-      var r = Sim().ping(c.dev, c.args.ip, { count: parseInt(c.args._1, 10) });
+      var r = Sim().ping(c.dev, c.args.host, { count: parseInt(c.args._1, 10) });
       return { out: r.out, refresh: false };
     }
   });
   R({
-    views: ['*'], pat: 'ping -a <ip> <ip>', global: true, seq: 'diag',
+    views: ['*'], pat: 'ping -a <ip> <host>', global: true, seq: 'diag',
     help: '指定源地址测试连通性',
     run: function (c) {
-      var r = Sim().ping(c.dev, c.args._2, { src: c.args._1 });
+      var r = Sim().ping(c.dev, c.args.host, { src: c.args._1 });
       return { out: r.out, refresh: false };
     }
   });
   R({
-    views: ['*'], pat: 'ping -s <int> <ip>', global: true, hidden: true, seq: 'diag',
-    help: '指定报文长度', run: function (c) { return { out: Sim().ping(c.dev, c.args.ip, { size: parseInt(c.args._1, 10) }).out, refresh: false }; }
+    views: ['*'], pat: 'ping -s <int> <host>', global: true, hidden: true, seq: 'diag',
+    help: '指定报文长度', run: function (c) { return { out: Sim().ping(c.dev, c.args.host, { size: parseInt(c.args._1, 10) }).out, refresh: false }; }
   });
   R({
     views: ['*'], pat: 'ping ipv6 <word>', global: true, hidden: true, seq: 'diag',
@@ -1446,19 +1438,14 @@
     }
   });
   R({
-    views: ['*'], pat: 'tracert <ip>', global: true, seq: 'diag',
-    help: '跟踪到目的地的路径',
-    run: function (c) { return { out: Sim().tracert(c.dev, c.args.ip, {}).out, refresh: false }; }
+    views: ['*'], pat: 'tracert <host>', global: true, seq: 'diag',
+    help: '跟踪到目的主机（IPv4 地址/主机名）的路径',
+    run: function (c) { return { out: Sim().tracert(c.dev, c.args.host, {}).out, refresh: false }; }
   });
   R({
-    views: ['*'], pat: 'tracert <word>', global: true, hidden: true, seq: 'diag',
-    help: '按主机名跟踪路径',
-    run: function (c) { return { out: Sim().tracert(c.dev, c.args.word, {}).out, refresh: false }; }
-  });
-  R({
-    views: ['*'], pat: 'tracert -a <ip> <ip>', global: true, hidden: true, seq: 'diag',
+    views: ['*'], pat: 'tracert -a <ip> <host>', global: true, hidden: true, seq: 'diag',
     help: '指定源地址跟踪路径',
-    run: function (c) { return { out: Sim().tracert(c.dev, c.args._2, { src: c.args._1 }).out, refresh: false }; }
+    run: function (c) { return { out: Sim().tracert(c.dev, c.args.host, { src: c.args._1 }).out, refresh: false }; }
   });
 
   /* ==================== 调试与统计 ==================== */

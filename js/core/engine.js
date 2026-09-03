@@ -49,6 +49,11 @@
     int: { re: /^\d+$/, hint: '<0-4294967295>' },
     num: { re: /^\d+(\.\d+)?$/, hint: '<number>' },
     ip: { re: null, test: function (v) { return U.isIp(v); }, hint: '<a.b.c.d>' },
+    // IPv4 地址或主机名（RFC 1123 简化版：字母开头，后接字母数字/连字符，
+    // 可选 . 分段；不能以数字开头以避免与 IPv4 重叠）
+    host: { re: null, test: function (v) {
+      return U.isIp(v) || /^[a-zA-Z][a-zA-Z0-9-]*(\.[a-zA-Z0-9-]+)*$/.test(v);
+    }, hint: '<host>' },
     mask: { re: null, test: function (v) { return U.maskLen(v) !== null; }, hint: '<mask|len>' },
     // 掩码或反掩码均可（OSPF network 语句常用反掩码，如 0.0.0.255）
     wild: { re: null, test: function (v) { return U.isIp(v) || /^\d+$/.test(v); }, hint: '<mask|wildcard>' },

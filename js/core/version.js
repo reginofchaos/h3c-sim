@@ -11,7 +11,7 @@
     author: '烧坏的内存条',
     contact: 'zyztonorrow@qq.com',
     github: 'https://github.com/reginofchaos/h3c-sim',
-    version: '1.4.0',
+    version: '1.4.1',
     updated: '2026-09-03',
     license: '教学用途 · 自由用于课堂实验',
     // 按日汇总的版本跨度；index 0 为最新版本
