@@ -759,6 +759,33 @@ function run() {
     }
   } catch (e) { ok(false, '点击关于按钮渲染无异常', e.message); }
 
+  /* 关于面板二次排版：移除副标题/当前版本行、标签加冒号、增加分割线、版本号与日期隔开 */
+  try {
+    var mcH = doc.getElementById('modal-c').innerHTML;
+    var mcT = doc.getElementById('modal-c').textContent.replace(/\s+/g, ' ');
+    ok(!/计算机网络设备配置/.test(mcT), '关于面板已移除课程副标题');
+    ok(!/about-k">当前版本/.test(mcH), '关于面板已移除「当前版本」信息行');
+    ok(!/about-sub/.test(mcH), '关于面板已移除 .about-sub 节点');
+    ok(/联系方式：/.test(mcT) && /GitHub：/.test(mcT), '联系方式 / GitHub 标签后带冒号');
+    ok(/about-divider/.test(mcH), '信息区与更新日志之间有分割线');
+    var clItems = doc.querySelectorAll('#modal-c .cl-item');
+    var clVer = doc.querySelectorAll('#modal-c .cl-ver');
+    var clDate = doc.querySelectorAll('#modal-c .cl-date');
+    ok(clItems.length >= 5 && clVer.length === clItems.length && clDate.length === clItems.length,
+      '每个版本条目各有独立版本号与日期标签',
+      'items=' + clItems.length + ' ver=' + clVer.length + ' date=' + clDate.length);
+  } catch (e2) { ok(false, '关于面板二次排版断言', e2.message); }
+
+  var cssFlat = css.replace(/\n/g, ' ');
+  ok(/\.about-logo\s*\{[^}]*font-weight:\s*900[^}]*font-size:\s*28px/.test(cssFlat),
+    'H3CSIM logo 加粗(900)并增大到 28px');
+  ok(/\.about-changelog-h\s*\{[^}]*font-weight:\s*800[^}]*font-size:\s*17px/.test(cssFlat),
+    '更新日志标题加粗(800)并增大到 17px');
+  ok(/\.cl-top\s*\{[^}]*flex-direction:\s*column/.test(cssFlat),
+    '版本号与日期上下排列（.cl-top 为 column，不再连在一起）');
+  ok(/\.cl-item\s*\{[^}]*border-top:[^;]*;\s*border-bottom:/.test(cssFlat),
+    '不同版本记录之间有分割线（.cl-item 上下边框）');
+
   /* ---------------- 汇总 ---------------- */
   console.log('\n================ 汇总 ================');
   console.log('PASS: ' + pass + '   FAIL: ' + fail);
