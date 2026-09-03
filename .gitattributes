@@ -1,0 +1,12 @@
+# 统一行尾：仓库与工作树一律 LF
+# 原因：GitHub Contents API 推送的是本地原始字节，若工作树是 CRLF 会被原样提交，
+#      与仓库其余 LF 文件不一致（曾导致 2 个文件 blob 与远程对不上）。
+* text=auto eol=lf
+
+# 二进制资源不做任何转换
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.svg text eol=lf

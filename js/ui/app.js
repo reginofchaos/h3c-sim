@@ -1024,8 +1024,6 @@
 
   function showAbout() {
     var A = (window.H3C && window.H3C.ABOUT) || {};
-    var ver = A.version || '1.0.0';
-    var updated = A.updated || '';
     var html = '';
     html += '<div class="about-head">';
     html += '  <div class="about-logo">H3C<span class="about-logo-sub">SIM</span></div>';
