@@ -1047,7 +1047,8 @@
     for (var i = 0; i < log.length; i++) {
       var e = log[i];
       html += '<div class="cl-item">';
-      html += '  <div class="cl-head"><span class="cl-ver">v' + e.version + '</span><span class="cl-date">' + (e.date || '') + '</span><span class="cl-title">' + (e.title || '') + '</span></div>';
+      html += '  <div class="cl-top"><span class="cl-ver">v' + e.version + '</span><span class="cl-date">' + (e.date || '') + '</span></div>';
+      html += '  <div class="cl-title">' + (e.title || '') + '</div>';
       html += '  <ul class="cl-changes">';
       var ch = e.changes || [];
       for (var j = 0; j < ch.length; j++) { html += '<li>' + ch[j] + '</li>'; }

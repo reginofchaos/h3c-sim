@@ -7,8 +7,8 @@
   'use strict';
   H.ABOUT = {
     appName: 'H3C 网络仿真实验室',
-    subtitle: '岳阳科技职业学院 · 《计算机网络设备配置》课程仿真终端',
-    author: '岳阳科技职业学院 计算机网络教学组',
+    subtitle: '《计算机网络设备配置》课程仿真终端',
+    author: '烧坏的内存条',
     contact: 'zyztonorrow@qq.com',
     github: 'https://github.com/reginofchaos/h3c-sim',
     version: '1.4.0',
