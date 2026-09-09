@@ -5,12 +5,12 @@
   "contact": "zyztonorrow@qq.com",
   "github": "https://github.com/reginofchaos/h3c-sim",
   "version": "1.5.0",
-  "updated": "2026-09-03",
+  "updated": "2026-09-09",
   "license": "教学用途 · 自由用于课堂实验",
   "changelog": [
     {
       "version": "1.5.0",
-      "date": "2026-09-03",
+      "date": "2026-09-09",
       "title": "终端逐字逐行输出（贴近真实设备回显）",
       "changes": [
         "终端屏幕改为「一行一节点」渲染，命令回显与输出按行拆分，为逐字揭示提供基础",
