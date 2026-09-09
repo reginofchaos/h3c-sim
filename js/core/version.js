@@ -11,11 +11,24 @@
     author: '烧坏的内存条',
     contact: 'zyztonorrow@qq.com',
     github: 'https://github.com/reginofchaos/h3c-sim',
-    version: '1.4.1',
+    version: '1.5.0',
     updated: '2026-09-03',
     license: '教学用途 · 自由用于课堂实验',
     // 按日汇总的版本跨度；index 0 为最新版本
     changelog: [
+      {
+        version: '1.5.0',
+        date: '2026-09-03',
+        title: '终端逐字逐行输出（贴近真实设备回显）',
+        changes: [
+          '终端屏幕改为「一行一节点」渲染，命令回显与输出按行拆分，为逐字揭示提供基础',
+          '新增打字机效果：执行 display / ping 等命令后，输出像真实设备一样逐字逐行刷出，行末带轻微停顿',
+          '输出过程中末行显示闪烁方块光标；按任意键、回车、空格或点击屏幕可立即跳到完整内容（回车只快进、不误提交命令）',
+          '单次输出总时长上限约 2.6 秒，长输出自动提速；超过 240 行（如 display current-configuration）自动关闭动画避免卡顿',
+          '动画只作用于显示层：命令结果仍立即完整写入会话 buffer，历史回放与自动化测试不受影响',
+          '新增 setTyping() 开关，自动化回归可关闭动画；回归测试 verify.js 达 226 项断言全通过'
+        ]
+      },
       {
         version: '1.4.1',
         date: '2026-09-03',

@@ -365,6 +365,17 @@ body.terminal-hidden .term-resizer { display: none; }
   font-family: "Consolas", "Courier New", monospace; font-size: 12.5px;
 }
 .term-screen .t-blank { height: 0; }
+/* 每行一个节点（打字机逐字揭示用） */
+.term-screen .t-line { min-height: 1.5em; }
+/* 正在逐字输出：末行尾部显示闪烁方块光标 */
+.term-screen.typing .t-line:last-child::after {
+  content: ""; display: inline-block; width: 7px; height: 1em; margin-left: 1px;
+  vertical-align: text-bottom; background: #c8d3e0; animation: tcaret 1s steps(1) infinite;
+}
+@keyframes tcaret { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .term-screen.typing .t-line:last-child::after { animation: none; }
+}
 
 /* ===== 弹窗 ===== */
 .modal { position: fixed; inset: 0; background: rgba(0,0,0,.55); display: flex; align-items: center; justify-content: center; z-index: 50; }
