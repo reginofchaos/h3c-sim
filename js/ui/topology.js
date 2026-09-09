@@ -388,7 +388,7 @@
   function onMouseUp(e) {
     if (drag) {
       if (!drag.moved) select(drag.id);
-      else saveView();
+      else { saveView(); resetColumn(); }   // 手动移动设备后，列游标作废重算
       drag = null;
     }
     if (pan) { pan = null; svg.classList.remove('panning'); saveView(); }
@@ -619,32 +619,41 @@
     return !(a.x + a.w + GAP_X <= b.x || b.x + b.w + GAP_X <= a.x ||
       a.y + a.h + GAP_Y <= b.y || b.y + b.h + GAP_Y <= a.y);
   }
-  /* 以 (x0,y0) 为起点做网格螺旋外扩，返回第一个不与任何已有设备重叠的位置 */
+  /* 新设备放置策略：从「当前拓扑整体」左上角空白起，左对齐、自上而下、等间距排成一列
+   * - 列锚点：现有设备包围盒的左上角(minX,minY)；首选放在整体左侧一列（x = minX - 设备宽 - 间距），左侧贴边则放整体正下方一列
+   * - 连续添加时由 colSlot 游标把每台依次下移一行高（ROW = 设备高 + 间距），保证左对齐且行间距完全一致；拓扑结构变动（拖拽/删除/加载/清空）时清零重算 */
+  var colSlot = null;   // 新设备列下一个落点，连续添加时复用
+  function resetColumn() { colSlot = null; }
   function findFreeSpot(x0, y0, w, h, exceptId) {
     w = w || NW; h = h || nodeH();
-    var occ = [], devs = H.State.S.devices, i, k;
+    var devs = H.State.S.devices, i;
+    var minX = 1e9, minY = 1e9, maxX = -1e9, maxY = -1e9, has = false;
     for (i = 0; i < devs.length; i++) {
       if (devs[i].id === exceptId) continue;
-      occ.push(devRect(devs[i]));
+      has = true;
+      var d = devs[i], ww = d._w || nodeWidth(d);
+      minX = Math.min(minX, d.x); minY = Math.min(minY, d.y);
+      maxX = Math.max(maxX, d.x + ww); maxY = Math.max(maxY, d.y + nodeH());
     }
-    var gx = Math.max(NW, w) + GAP_X, gy = nodeH() + GAP_Y;
-    function free(px, py) {
-      if (px < 0 || py < 0) return false;
-      var r = { x: px, y: py, w: w, h: h };
-      for (k = 0; k < occ.length; k++) if (rectsHit(r, occ[k])) return false;
-      return true;
+    var ax, ay;
+    if (!has) { ax = 40; ay = 40; }
+    else { ax = minX - (w + GAP_X); if (ax < 0) ax = maxX + GAP_X; ay = minY; }
+    return { x: Math.round(ax), y: Math.round(ay) };
+  }
+  /* 连续添加入口：首台用整体左上角锚点，之后沿列游标等间距下移 */
+  function placeNewDevice(dev, w, h) {
+    w = w || NW; h = h || nodeH();
+    var ROW = h + GAP_Y;
+    var spot;
+    if (colSlot) {
+      spot = { x: colSlot.x, y: colSlot.y };
+      colSlot.y += ROW;
+    } else {
+      spot = findFreeSpot(dev.x, dev.y, w, h, dev.id);
+      colSlot = { x: spot.x, y: spot.y + ROW };
     }
-    if (free(x0, y0)) return { x: Math.round(x0), y: Math.round(y0) };
-    for (var ring = 1; ring <= 80; ring++) {
-      for (var dx = -ring; dx <= ring; dx++) {
-        for (var dy = -ring; dy <= ring; dy++) {
-          if (Math.max(Math.abs(dx), Math.abs(dy)) !== ring) continue;
-          var px = x0 + dx * gx, py = y0 + dy * gy;
-          if (free(px, py)) return { x: Math.round(px), y: Math.round(py) };
-        }
-      }
-    }
-    return { x: Math.round(x0), y: Math.round(y0) };
+    dev.x = spot.x; dev.y = spot.y;
+    return spot;
   }
   /* 新设备若落在可视区之外，平移视图让它可见（不改变缩放） */
   function ensureVisible(d) {
@@ -697,6 +706,7 @@
     var na = document.getElementById('node-actions');
     if (na) { var nd = document.getElementById('node-del'); if (nd) nd.addEventListener('click', removeSelected); }
     window.addEventListener('keydown', onKeyDown);
+    H.State.on('reload', resetColumn);   // 清空 / 加载场景后列游标归零
     updateNodeActions();
   }
   function drawGrid() {
@@ -713,7 +723,8 @@
     fit: fit, zoomBy: function (f) { zoomAt(svg.clientWidth / 2, svg.clientHeight / 2, view.scale * f); },
     setLinkMode: setLinkMode, isLinkMode: function () { return linkMode; },
     getSelected: function () { return sel; }, onSelect: null, onLinkMode: null,
-    findFreeSpot: findFreeSpot, ensureVisible: ensureVisible,
+    findFreeSpot: findFreeSpot, placeNewDevice: placeNewDevice, resetColumn: resetColumn,
+    ensureVisible: ensureVisible,
     nodeWidth: nodeWidth, nodeHeight: nodeH, getView: function () { return view; }
   };
 })(window.H3C);

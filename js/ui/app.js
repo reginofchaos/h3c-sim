@@ -79,10 +79,9 @@
     var m = H.Model.get(modelId);
     var name = S.uniqueName(m ? m.label : modelId);
     var dev = S.addDevice(modelId, name, Math.round(x), Math.round(y));
-    // 自动避让：若目标位置已被占用（连点添加会堆在一起），向外找最近的空白位置
-    if (TOPO && TOPO.findFreeSpot) {
-      var spot = TOPO.findFreeSpot(dev.x, dev.y, TOPO.nodeWidth(dev), TOPO.nodeHeight(), dev.id);
-      dev.x = spot.x; dev.y = spot.y;
+    // 自动列排布：从现有拓扑整体左上角空白处起，左对齐、自上而下、等间距排成一列
+    if (TOPO && TOPO.placeNewDevice) {
+      TOPO.placeNewDevice(dev, TOPO.nodeWidth(dev), TOPO.nodeHeight());
     }
     TOPO.select(dev.id);
     if (TOPO && TOPO.ensureVisible) TOPO.ensureVisible(dev);
