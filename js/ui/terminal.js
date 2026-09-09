@@ -72,7 +72,7 @@
     var fresh = false;
     if (!sess.started) { printBanner(d, sess); sess.started = true; fresh = true; }
     renderScreen();
-    if (fresh) revealFrom(0);           // 首次打开：登录横幅也逐行"刷"出来
+    if (fresh) { renderScreen(0); startReveal(sess.buffer); }   // 首次打开：登录横幅逐行"刷"出来
     refreshTabs();
     promptEl.textContent = E.promptFor(d, sess);
     inputEl.disabled = false;
@@ -94,28 +94,47 @@
     refreshTabs();
   }
 
-  /* ---------- 屏幕渲染 ---------- */
-  // 每行一个 .t-line 节点（多行文本按 \n 拆开），便于打字机逐行揭示
-  function renderScreen() {
+  /* ---------- 屏幕渲染 ----------
+   * 每行一个 .t-line 节点；打字机是「逐行 append 新节点」而不是先把所有行建好再填字，
+   * 这样屏幕空间是一行一行被占用的，不会出现"先留出整块空白再逐行显示"。
+   */
+  function kindOf(e) {
+    return (e.type === 'in') ? 't-in'
+      : (e.type === 'err') ? 't-err'
+        : (e.type === 'help') ? 't-help'
+          : (e.type === 'sys') ? 't-sys' : '';
+  }
+  function lineHtml(kind, text, prompt) {
+    return '<div class="t-line' + (kind ? ' ' + kind : '') + '">' +
+      (prompt ? ('<span class="tp">' + esc(prompt) + '</span> ') : '') + esc(text) + '</div>';
+  }
+  // 把 buffer 条目摊平成"行"：[{kind, text, prompt}]
+  function entriesToLines(entries) {
+    var out = [];
+    for (var i = 0; i < entries.length; i++) {
+      var e = entries[i], kind = kindOf(e);
+      var ls = String(e.text == null ? '' : e.text).split('\n');
+      for (var j = 0; j < ls.length; j++) {
+        out.push({ kind: kind, text: ls[j], prompt: (e.type === 'in' && j === 0) ? e.prompt : null });
+      }
+    }
+    return out;
+  }
+
+  // maxLines：只渲染前 N 行（打字机用它先画出"已有内容"，新内容再逐行追加）
+  function renderScreen(maxLines) {
     var sess = activeSession(); if (!sess) { return; }
     finishReveal();               // 渲染会重建 DOM，先结束动画避免持有失效节点
-    var html = '';
-    sess.buffer.forEach(function (e) {
-      var kind = (e.type === 'in') ? 't-in'
-        : (e.type === 'err') ? 't-err'
-          : (e.type === 'help') ? 't-help'
-            : (e.type === 'sys') ? 't-sys' : '';
-      var txt = String(e.text == null ? '' : e.text);
-      var lines = txt.split('\n');
-      for (var i = 0; i < lines.length; i++) {
-        var cls = 't-line' + (kind ? ' ' + kind : '');
-        if (e.type === 'in' && i === 0) {
-          html += '<div class="' + cls + '"><span class="tp">' + esc(e.prompt) + '</span> ' + esc(lines[i]) + '</div>';
-        } else {
-          html += '<div class="' + cls + '">' + esc(lines[i]) + '</div>';
-        }
+    var buf = sess.buffer, html = '', n = 0, stop = false;
+    for (var i = 0; i < buf.length && !stop; i++) {
+      var e = buf[i], kind = kindOf(e);
+      var ls = String(e.text == null ? '' : e.text).split('\n');
+      for (var j = 0; j < ls.length; j++) {
+        if (maxLines != null && n >= maxLines) { stop = true; break; }
+        html += lineHtml(kind, ls[j], (e.type === 'in' && j === 0) ? e.prompt : null);
+        n++;
       }
-    });
+    }
     screenEl.innerHTML = html;
     screenEl.scrollTop = screenEl.scrollHeight;
   }
@@ -132,12 +151,14 @@
 
   /* ---------- 打字机：逐字逐行揭示输出（贴近真实终端） ----------
    * 设计要点：命令结果仍"立即完整写入 sess.buffer"（保证数据/测试一致），
-   * 只在 DOM 层把新增行先清空再逐字填回；任意键或点击可立即跳过。
+   * 显示层才是"一行一行新增节点并逐字填充"，屏幕空间随之逐行增长；
+   * 任意键或点击可立即跳过。
    */
-  var TYPE_CPS = 380;       // 每秒字符数（越小越慢，贴近真实设备逐字回显）
-  var TYPE_LINE_GAP = 30;   // 行间额外停顿(ms)
-  var TYPE_MAX_MS = 5000;   // 单次输出总时长上限，超出则自动提速
-  var TYPE_ON = true;       // 总开关（自动化测试会关闭，保证 DOM 立即可见）
+  var TYPE_CPS = 380;        // 每秒字符数（越小越慢，贴近真实设备逐字回显）
+  var TYPE_LINE_GAP = 30;    // 行间额外停顿(ms)
+  var TYPE_MAX_MS = 5000;    // 单次输出总时长上限，超出则自动提速
+  var TYPE_MAX_LINES = 3000; // 超过这么多行才放弃动画（极端输出兜底）
+  var TYPE_ON = true;        // 总开关（自动化测试会关闭，保证 DOM 立即可见）
   var typer = null;
 
   function nowMs() { return (window.performance && performance.now) ? performance.now() : Date.now(); }
@@ -156,35 +177,55 @@
     if (!b && activeDev) { try { inputEl.focus(); } catch (x) {} }
   }
 
-  // 从 startIdx 开始的（非回显）行逐字揭示
-  function revealFrom(startIdx) {
+  function canAnimate() {
+    return !!(TYPE_ON && screenEl && typeof window.requestAnimationFrame === 'function');
+  }
+
+  // 逐行揭示一批"行"（先插入节点占住一行，再往里逐字填）
+  function startRevealLines(lines) {
     finishReveal();
-    if (!TYPE_ON || !screenEl) return;
-    if (typeof window.requestAnimationFrame !== 'function') return;   // 无 rAF 环境直接跳过
-    var nodes = screenEl.children, items = [], i, el, full;
-    if (nodes.length - startIdx > 240) return;                        // 超长输出不动画，避免卡顿
-    for (i = startIdx; i < nodes.length; i++) {
-      el = nodes[i];
-      if (!el || String(el.className || '').indexOf('t-in') >= 0) continue;
-      full = el.textContent;
-      if (!full) continue;              // 空行无需动画
-      items.push({ el: el, full: full, pos: 0 });
-      el.textContent = '';
+    if (!lines || !lines.length) return;
+    if (!canAnimate() || lines.length > TYPE_MAX_LINES) { renderScreen(); return; }
+
+    // 命令回显行（t-in）立即完整出现，之后的输出行才逐行揭示
+    var k = 0, html = '';
+    while (k < lines.length && lines[k].kind === 't-in') {
+      html += lineHtml(lines[k].kind, lines[k].text, lines[k].prompt);
+      k++;
     }
-    if (!items.length) return;
+    if (html) screenEl.insertAdjacentHTML('beforeend', html);
+    var items = lines.slice(k);
+    if (!items.length) { screenEl.scrollTop = screenEl.scrollHeight; return; }
+
     var total = 0;
-    for (i = 0; i < items.length; i++) total += items[i].full.length;
+    for (var i = 0; i < items.length; i++) total += items[i].text.length;
     var cps = TYPE_CPS;
-    var gap = items.length > 40 ? 0 : TYPE_LINE_GAP;   // 超长输出取消行间停顿
+    var gap = items.length > 80 ? 0 : TYPE_LINE_GAP;      // 超长输出取消行间停顿
     var est = (total / cps) * 1000 + items.length * gap;
-    if (est > TYPE_MAX_MS) cps = total / (Math.max(200, TYPE_MAX_MS - items.length * 2) / 1000);
+    // 超出总时长上限就整体提速：无论输出多长都在 TYPE_MAX_MS 内滚完（不会"秒出"，也不会久等）
+    if (est > TYPE_MAX_MS) cps = Math.max(120, total / ((TYPE_MAX_MS - 120) / 1000));
+
     typer = {
-      items: items, idx: 0, cps: Math.max(200, cps),
-      gap: 0, gap0: gap,          // gap0=行末停顿基准；首行不停顿
+      items: items, idx: 0, cps: cps,
+      el: null, pos: 0,
+      gap: 0, gap0: gap,          // gap0=行末停顿基准
       last: nowMs(), raf: 0, alive: true
     };
     setBusy(true);
     typer.raf = rafFn(step);
+  }
+
+  // 对外：揭示一批新增的 buffer 条目
+  function startReveal(entries) { startRevealLines(entriesToLines(entries)); }
+
+  // 动画进行中又来了新内容（如 ping -t）：排到当前队列尾部，不打断正在刷的那行
+  function pushLines(lines) {
+    if (typer && typer.alive) {
+      for (var i = 0; i < lines.length; i++) typer.items.push(lines[i]);
+      if (!typer.raf) { typer.last = nowMs(); typer.raf = rafFn(step); }
+      return;
+    }
+    startRevealLines(lines);
   }
 
   function step(ts) {
@@ -193,31 +234,43 @@
     var dt = t - typer.last;
     typer.last = t;
     if (dt < 0) dt = 0;
-    if (typer.gap > 0 && typer.idx > 0) {
+    if (typer.gap > 0) {
       typer.gap -= dt;
       if (typer.gap > 0) { typer.raf = rafFn(step); return; }
       dt = -typer.gap; typer.gap = 0;
     }
     var budget = Math.max(1, Math.floor(typer.cps * dt / 1000));
-    while (budget > 0 && typer.idx < typer.items.length) {
-      var it = typer.items[typer.idx];
-      var remain = it.full.length - it.pos;
-      if (remain <= budget) {
-        it.pos = it.full.length;
-        it.el.textContent = it.full;
-        budget -= remain;
-        typer.idx++;
-        typer.gap = typer.gap0;
-        break;                          // 行末停顿，等下一帧
+    while (typer.idx < typer.items.length) {
+      if (!typer.el) {                                  // 新行：先建节点（空间从这一刻开始被占用）
+        var head = typer.items[typer.idx];
+        typer.el = document.createElement('div');
+        typer.el.className = 't-line' + (head.kind ? ' ' + head.kind : '');
+        typer.el.textContent = '';
+        screenEl.appendChild(typer.el);
+        typer.pos = 0;
+        screenEl.scrollTop = screenEl.scrollHeight;
       }
-      it.pos += budget;
-      it.el.textContent = it.full.substring(0, it.pos);
+      var it = typer.items[typer.idx];
+      var remain = it.text.length - typer.pos;
+      if (remain <= budget) {
+        typer.el.textContent = it.text;                 // 本行补齐
+        budget -= remain;
+        typer.idx++; typer.el = null;
+        if (typer.idx >= typer.items.length) break;
+        typer.gap = typer.gap0;                         // 行末停顿
+        if (typer.gap > 0 || budget <= 0) break;
+        continue;
+      }
+      typer.pos += budget;
+      typer.el.textContent = it.text.substring(0, typer.pos);
       budget = 0;
+      break;
     }
     screenEl.scrollTop = screenEl.scrollHeight;
     if (typer.idx >= typer.items.length) { finishReveal(); return; }
     typer.raf = rafFn(step);
   }
+
 
   // 立即补全剩余内容并恢复输入
   function finishReveal() {
@@ -226,10 +279,16 @@
     typer = null;                       // 先置空，避免重入
     t.alive = false;
     if (t.raf) cafFn(t.raf);
-    for (var i = 0; i < t.items.length; i++) {
-      var it = t.items[i];
-      if (it.pos < it.full.length) { it.pos = it.full.length; it.el.textContent = it.full; }
+    var i = t.idx;
+    if (t.el && i < t.items.length) {   // 正在刷的这行先补齐
+      t.el.textContent = t.items[i].text;
+      i++;
     }
+    var html = '';
+    for (; i < t.items.length; i++) {   // 其余未出现的行一次性插入
+      html += lineHtml(t.items[i].kind, t.items[i].text, t.items[i].prompt);
+    }
+    if (html && screenEl) screenEl.insertAdjacentHTML('beforeend', html);
     if (screenEl) screenEl.scrollTop = screenEl.scrollHeight;
     setBusy(false);
   }
@@ -268,9 +327,12 @@
       if (!r) return;
       job.sent++;
       if (r.ok) { job.recv++; if (r.time != null) job.times.push(r.time); }
-      var si = countLines(sess.buffer);
-      sess.buffer.push({ type: 'out', text: r.line });
-      if (devId === activeDev) { renderScreen(); revealFrom(si); }
+      var entry = { type: 'out', text: r.line };
+      sess.buffer.push(entry);
+      if (devId === activeDev) {
+        if (canAnimate()) pushLines(entriesToLines([entry]));   // 排队逐行显示，不打断正在刷的行
+        else renderScreen();
+      }
     };
     tickNow();                                   // 先立刻出一行，避免干等一秒
     job.timer = setInterval(tickNow, job.interval || 1000);
@@ -282,21 +344,30 @@
     var d = activeDevice(), sess = activeSession();
     if (!d || !sess) return;
     var line = String(raw || '');
-    var startIdx = countLines(sess.buffer);
-    sess.buffer.push({ type: 'in', prompt: E.promptFor(d, sess), text: line });
+    var oldLines = countLines(sess.buffer);
+    var bufRef = sess.buffer;                 // cls/clear 会整块替换 buffer
+    var added = [];
+    var inEntry = { type: 'in', prompt: E.promptFor(d, sess), text: line };
+    sess.buffer.push(inEntry); added.push(inEntry);
     if (line.trim() !== '') {
       var r = E.exec(d, sess, line);
       var out = r.out;
       if (Array.isArray(out)) out = out.join('\n');
-      sess.buffer.push({ type: r.err ? 'err' : 'out', text: out });
+      var outEntry = { type: r.err ? 'err' : 'out', text: out };
+      sess.buffer.push(outEntry);
+      if (sess.buffer === bufRef) added.push(outEntry); else added = [];   // 已清屏则不追加
       if (r.job && !r.err) startJob(sess, d.id, r.job);      // 持续类命令（ping -t）
       if (sess.history.indexOf(line) < 0 || sess.history.length === 0) sess.history.push(line);
     }
     sess.histIdx = -1;
     inputEl.value = '';
     promptEl.textContent = E.promptFor(d, sess);
-    renderScreen();
-    revealFrom(startIdx);               // 逐字逐行揭示本次命令的输出
+    if (sess.buffer === bufRef) {
+      renderScreen(oldLines);                 // 只画到"本次之前"，新内容交给打字机逐行追加
+      startReveal(added);
+    } else {
+      renderScreen();                         // 清屏类命令
+    }
     S.emit('change');   // 刷新拓扑端口状态/检示器
   }
 
@@ -328,10 +399,10 @@
         var head = sp >= 0 ? v.substring(0, sp + 1) : '';
         inputEl.value = head + c.value;
       } else if (c.type === 'list') {
-        var si1 = countLines(sess.buffer);
-        sess.buffer.push({ type: 'out', text: c.list.join('   ') });
-        renderScreen();
-        revealFrom(si1);
+        var n1 = countLines(sess.buffer);
+        var e1 = { type: 'out', text: c.list.join('   ') };
+        sess.buffer.push(e1);
+        renderScreen(n1); startReveal([e1]);
       }
       return;
     }
@@ -340,10 +411,10 @@
       e.preventDefault();
       inputEl.value += '?';
       var h = E.help(d, sess, inputEl.value);
-      var si2 = countLines(sess.buffer);
-      sess.buffer.push({ type: 'help', text: h });
-      renderScreen();
-      revealFrom(si2);
+      var n2 = countLines(sess.buffer);
+      var e2 = { type: 'help', text: h };
+      sess.buffer.push(e2);
+      renderScreen(n2); startReveal([e2]);
       return;
     }
 
@@ -368,16 +439,17 @@
 
     if (e.ctrlKey && (e.key === 'c' || e.key === 'C')) {
       e.preventDefault();
-      var siC = countLines(sess.buffer);
+      var nC = countLines(sess.buffer);
       sess.buffer.push({ type: 'in', prompt: E.promptFor(d, sess), text: inputEl.value + '^C' });
       inputEl.value = '';
       var jb = stopJob(sess);                    // 结束持续任务（如 ping -t）
+      var tail = [];
       if (jb && jb.stopText && jb.sent) {
         var st = '';
         try { st = jb.stopText(jb); } catch (x) { st = ''; }
-        if (st) sess.buffer.push({ type: 'out', text: st });
+        if (st) { var eS = { type: 'out', text: st }; sess.buffer.push(eS); tail.push(eS); }
       }
-      renderScreen(); revealFrom(siC); return;
+      renderScreen(nC); startReveal(tail); return;
     }
     if (e.ctrlKey && (e.key === 'l' || e.key === 'L')) {
       e.preventDefault(); stopJob(sess); sess.buffer = []; renderScreen(); return;
@@ -389,9 +461,10 @@
 
   function printOut(id, text, type) {
     var s = S.getSession(id); if (!s) return;
-    var si = countLines(s.buffer);
-    s.buffer.push({ type: type || 'out', text: text });
-    if (id === activeDev) { renderScreen(); revealFrom(si); }
+    var n = countLines(s.buffer);
+    var entry = { type: type || 'out', text: text };
+    s.buffer.push(entry);
+    if (id === activeDev) { renderScreen(n); startReveal([entry]); }
   }
 
   H.UI = H.UI || {};

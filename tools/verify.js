@@ -785,7 +785,7 @@ function run() {
   console.log('\n=== 六、关于面板与版本管理 ===');
   const AB = (window.H3C && window.H3C.ABOUT) || {};
   ok(AB && typeof AB === 'object', 'H.ABOUT 已挂载到 window.H3C');
-  ok(AB.version === '1.6.0', '当前版本号为 1.6.0', 'got ' + AB.version);
+  ok(AB.version === '1.6.1', '当前版本号为 1.6.1', 'got ' + AB.version);
   ok(AB.contact === 'zyztonorrow@qq.com', '联系方式为 zyztonorrow@qq.com');
   ok(/github\.com/.test(AB.github || ''), '包含 GitHub 仓库地址');
   ok(Array.isArray(AB.changelog) && AB.changelog.length >= 5, '更新日志含 >=5 个版本（1.0.0 起）');
@@ -853,19 +853,25 @@ function run() {
   console.log('\n=== 终端逐字逐行输出（打字机） ===');
   try {
     var termSrc = fs.readFileSync(path.join(ROOT, 'js/ui/terminal.js'), 'utf8');
-    ok(/function revealFrom\(/.test(termSrc) && /function step\(/.test(termSrc) && /function finishReveal\(/.test(termSrc),
-      '终端具备 revealFrom / step / finishReveal 三件套');
-    ok(/revealFrom\(startIdx\)/.test(termSrc), 'submit() 渲染后启动逐字揭示');
+    ok(/function startRevealLines\(/.test(termSrc) && /function step\(/.test(termSrc) && /function finishReveal\(/.test(termSrc),
+      '终端具备 startRevealLines / step / finishReveal 三件套');
+    ok(/renderScreen\(oldLines\);\s*(\/\/[^\n]*\n\s*)?startReveal\(added\)/.test(termSrc),
+      'submit() 先画旧内容再逐行追加新输出（空间逐行占用）');
+    ok(/screenEl\.appendChild\(typer\.el\)/.test(termSrc),
+      '打字机逐行 appendChild 新节点（而非先建好全部行再填字）');
+    ok(/var TYPE_MAX_LINES = 3000/.test(termSrc), '超长输出阈值放宽到 3000 行（dis int 等长输出也有动画）');
+    ok(/cps = Math\.max\(120, total \/ \(\(TYPE_MAX_MS - 120\) \/ 1000\)\)/.test(termSrc),
+      '超长输出按总时长上限自动提速（不会秒出也不会久等）');
+    ok(/function pushLines\(/.test(termSrc), 'ping -t 新行排入当前动画队列（不打断正在刷的行）');
     ok(/finishReveal\(\);[\s\S]{0,80}if \(e\.key === 'Enter' \|\| e\.key === ' '\)/.test(termSrc),
       '动画中按回车/空格只快进、不误提交命令');
     ok(/screenEl\.addEventListener\('click'[\s\S]{0,60}finishReveal/.test(termSrc),
       '点击屏幕可跳过逐字动画');
-    ok(/var TYPE_ON = true/.test(termSrc) && /if \(!TYPE_ON/.test(termSrc),
+    ok(/var TYPE_ON = true/.test(termSrc) && /TYPE_ON && screenEl/.test(termSrc),
       '存在总开关 TYPE_ON（自动化测试可关闭）');
-    ok(/typeof window\.requestAnimationFrame !== 'function'\) return/.test(termSrc),
+    ok(/typeof window\.requestAnimationFrame === 'function'/.test(termSrc),
       '无 requestAnimationFrame 的环境自动跳过动画');
-    ok(/nodes\.length - startIdx > 240\) return/.test(termSrc), '超长输出（>240 行）不启用动画，避免卡顿');
-    ok(/TYPE_MAX_MS/.test(termSrc) && /cps = total \//.test(termSrc), '单次输出有总时长上限并自动提速');
+    ok(/cps = Math\.max\(120, total/.test(termSrc), '单次输出有总时长上限并自动提速');
 
     // 数据层不受动画影响：命令结果必须立即完整写入 buffer
     if (S.S.devices.length) {
