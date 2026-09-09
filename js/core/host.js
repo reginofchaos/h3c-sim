@@ -11,7 +11,7 @@
   var HELP_TEXT = [
     '可用命令：',
     '  ipconfig [/all]     查看本机 IP 配置（含 MAC 与 IPv6）',
-    '  ping <IP/主机>      测试网络连通性',
+    '  ping <IP/主机>      测试网络连通性（-t 持续 ping，Ctrl+C 停止；-n 次数）',
     '  tracert <IP/主机>   跟踪路由路径',
     '  ping6 <IPv6>        测试 IPv6 网络连通性',
     '  tracert6 <IPv6>     跟踪 IPv6 路由路径',
@@ -126,7 +126,40 @@
     if (cmd === 'ping' || cmd === 'tracert' || cmd === 'traceroute') {
       if (!tokens[1]) return { out: '用法: ' + cmd + ' <IP地址或主机名>', err: true };
       var fn = cmd === 'ping' ? H.Sim.ping : H.Sim.tracert;
-      var r = fn(dev, tokens[1], {});
+
+      // 解析选项：-t 持续 ping（Ctrl+C 停止）；-n <次数> 指定次数
+      var tFlag = false, nCount = null, target = null;
+      for (var i = 1; i < tokens.length; i++) {
+        var tk = tokens[i];
+        if (tk === '-t' || tk === '-T') { tFlag = true; continue; }
+        if (tk === '-n' || tk === '-N') { nCount = parseInt(tokens[i + 1], 10); i++; continue; }
+        if (tk.charAt(0) === '-') continue;               // 其余选项忽略
+        if (target === null) target = tk;
+      }
+      if (target === null) return { out: '用法: ' + cmd + ' [-t] [-n 次数] <IP地址或主机名>', err: true };
+
+      // 持续 ping：只返回头部，探测行由终端后台任务每 1 秒补一行（Ctrl+C 停止）
+      if (cmd === 'ping' && tFlag) {
+        var seq = 0;
+        var job = {
+          label: 'ping -t ' + target,
+          interval: 1000,
+          target: target,
+          tick: function () {
+            seq++;
+            var r = H.Sim.pingOnce(dev, target, { seq: seq });
+            job.dstIp = r.dstIp;
+            return r;                       // { ok, line, time }
+          },
+          stopText: function (j) {
+            return H.Sim.pingStats(j.dstIp || target, j.sent, j.recv, j.times) + '\nControl-C';
+          }
+        };
+        return { out: 'Ping ' + target + ': 56 data bytes, press CTRL_C to break', job: job };
+      }
+
+      var opts = (nCount && nCount > 0) ? { count: nCount } : {};
+      var r = fn(dev, target, opts);
       return { out: (typeof r.out === 'string') ? r.out : r.out.join('\n') };
     }
     if (cmd === 'ping6' || cmd === 'tracert6' || cmd === 'traceroute6') {

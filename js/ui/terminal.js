@@ -52,6 +52,7 @@
   }
 
   function closeTab(id) {
+    var s = S.getSession(id); if (s) stopJob(s);     // 关闭终端时结束持续任务
     if (id === activeDev) {
       var devs = S.S.devices;
       var idx = devs.map(function (x) { return x.id; }).indexOf(id);
@@ -75,6 +76,7 @@
     refreshTabs();
     promptEl.textContent = E.promptFor(d, sess);
     inputEl.disabled = false;
+    syncJobInput();                     // 该设备若有持续任务（ping -t），输入框保持只读
     inputEl.focus();
     if (H.UI.Terminal.onActivate) H.UI.Terminal.onActivate(id);
   }
@@ -132,9 +134,9 @@
    * 设计要点：命令结果仍"立即完整写入 sess.buffer"（保证数据/测试一致），
    * 只在 DOM 层把新增行先清空再逐字填回；任意键或点击可立即跳过。
    */
-  var TYPE_CPS = 900;       // 每秒字符数
-  var TYPE_LINE_GAP = 12;   // 行间额外停顿(ms)
-  var TYPE_MAX_MS = 2600;   // 单次输出总时长上限，超出则自动提速
+  var TYPE_CPS = 380;       // 每秒字符数（越小越慢，贴近真实设备逐字回显）
+  var TYPE_LINE_GAP = 30;   // 行间额外停顿(ms)
+  var TYPE_MAX_MS = 5000;   // 单次输出总时长上限，超出则自动提速
   var TYPE_ON = true;       // 总开关（自动化测试会关闭，保证 DOM 立即可见）
   var typer = null;
 
@@ -232,6 +234,49 @@
     setBusy(false);
   }
 
+  /* ---------- 后台任务（PC 的 ping -t 等持续输出命令） ----------
+   * job = { label, interval, tick(), stopText(job) }
+   * 每次 tick 都重新走 Sim 转发计算，所以链路断开 / 端口配置变化 / 恢复会实时反映。
+   */
+  function stopJob(sess) {
+    if (!sess || !sess.job) return null;
+    var j = sess.job;
+    sess.job = null;
+    if (j.timer) clearInterval(j.timer);
+    syncJobInput();
+    return j;
+  }
+
+  // 持续任务运行期间输入框只读（像真实终端一样不接受命令，只能 Ctrl+C）
+  function syncJobInput() {
+    if (!inputEl) return;
+    var s = activeSession();
+    inputEl.readOnly = !!(s && s.job);
+    if (!inputEl.readOnly && activeDev) { try { inputEl.focus(); } catch (x) {} }
+  }
+
+  function startJob(sess, devId, job) {
+    stopJob(sess);
+    job.sent = 0; job.recv = 0; job.times = [];
+    sess.job = job;
+    var tickNow = function () {
+      if (!sess.job || sess.job !== job) return;
+      var cur = S.getSession(devId);
+      if (!cur || cur !== sess) { stopJob(sess); return; }   // 会话已被重建（重载/切场景）
+      var r;
+      try { r = job.tick(); } catch (x) { r = null; }
+      if (!r) return;
+      job.sent++;
+      if (r.ok) { job.recv++; if (r.time != null) job.times.push(r.time); }
+      var si = countLines(sess.buffer);
+      sess.buffer.push({ type: 'out', text: r.line });
+      if (devId === activeDev) { renderScreen(); revealFrom(si); }
+    };
+    tickNow();                                   // 先立刻出一行，避免干等一秒
+    job.timer = setInterval(tickNow, job.interval || 1000);
+    syncJobInput();
+  }
+
   /* ---------- 执行 ---------- */
   function submit(raw) {
     var d = activeDevice(), sess = activeSession();
@@ -244,6 +289,7 @@
       var out = r.out;
       if (Array.isArray(out)) out = out.join('\n');
       sess.buffer.push({ type: r.err ? 'err' : 'out', text: out });
+      if (r.job && !r.err) startJob(sess, d.id, r.job);      // 持续类命令（ping -t）
       if (sess.history.indexOf(line) < 0 || sess.history.length === 0) sess.history.push(line);
     }
     sess.histIdx = -1;
@@ -264,6 +310,12 @@
     if (typer) {
       finishReveal();
       if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); return; }
+    }
+
+    // 持续任务（ping -t）运行中：像真实终端一样只接受 Ctrl+C 中断
+    if (sess.job) {
+      var isBreak = e.ctrlKey && (e.key === 'c' || e.key === 'C');
+      if (!isBreak) { e.preventDefault(); return; }
     }
 
     if (e.key === 'Enter') { e.preventDefault(); submit(inputEl.value); return; }
@@ -316,11 +368,19 @@
 
     if (e.ctrlKey && (e.key === 'c' || e.key === 'C')) {
       e.preventDefault();
+      var siC = countLines(sess.buffer);
       sess.buffer.push({ type: 'in', prompt: E.promptFor(d, sess), text: inputEl.value + '^C' });
-      inputEl.value = ''; renderScreen(); return;
+      inputEl.value = '';
+      var jb = stopJob(sess);                    // 结束持续任务（如 ping -t）
+      if (jb && jb.stopText && jb.sent) {
+        var st = '';
+        try { st = jb.stopText(jb); } catch (x) { st = ''; }
+        if (st) sess.buffer.push({ type: 'out', text: st });
+      }
+      renderScreen(); revealFrom(siC); return;
     }
     if (e.ctrlKey && (e.key === 'l' || e.key === 'L')) {
-      e.preventDefault(); sess.buffer = []; renderScreen(); return;
+      e.preventDefault(); stopJob(sess); sess.buffer = []; renderScreen(); return;
     }
   }
   function moveCaretEnd() {
@@ -338,6 +398,9 @@
   H.UI.Terminal = {
     init: init, openTab: openTab, refreshTabs: refreshTabs, printOut: printOut,
     renderEmpty: renderEmpty, onActivate: null,
-    setTyping: function (on) { TYPE_ON = !!on; if (!on) finishReveal(); }
+    setTyping: function (on) { TYPE_ON = !!on; if (!on) finishReveal(); },
+    isTyping: function () { return !!typer; },
+    hasJob: function (id) { var s = S.getSession(id); return !!(s && s.job); },
+    stopJob: function (id) { var s = S.getSession(id); return !!stopJob(s); }
   };
 })(window.H3C);

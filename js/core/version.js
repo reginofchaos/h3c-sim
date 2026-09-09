@@ -11,11 +11,25 @@
     author: '烧坏的内存条',
     contact: 'zyztonorrow@qq.com',
     github: 'https://github.com/reginofchaos/h3c-sim',
-    version: '1.5.0',
+    version: '1.6.0',
     updated: '2026-09-09',
     license: '教学用途 · 自由用于课堂实验',
     // 按日汇总的版本跨度；index 0 为最新版本
     changelog: [
+      {
+        version: '1.6.0',
+        date: '2026-09-09',
+        title: 'PC 持续 ping（ping -t）+ 逐字输出提速调优',
+        changes: [
+          'PC / 服务器终端新增 ping -t：持续探测目标，每 1 秒一行，Ctrl+C 中断并给出收发统计（已发送/已接收/丢失率/往返 min-avg-max）',
+          '持续 ping 每次探测都重新计算转发路径：链路断开或交换机端口 shutdown 立即变为 Request time out，恢复后自动回到 Reply',
+          '修复端口 down 时提示「源地址不存在」的误导：仍取网卡已配置地址，正确显示为 Request time out',
+          'PC ping 同时支持 -n <次数> 指定探测次数；ping -t 运行期间输入框只读，只能 Ctrl+C 中断（贴近真实终端）',
+          '逐字输出速度调慢：380 字符/秒、行间停顿 30ms、单次总时长上限 5 秒，回显节奏更接近真实设备',
+          '排查并确认所有有输出的命令路径（命令执行 / Tab 候选 / ? 帮助 / printOut / 首屏横幅 / 持续任务）均已接入逐字揭示',
+          '回归测试 verify.js 达 247 项断言全通过'
+        ]
+      },
       {
         version: '1.5.0',
         date: '2026-09-09',

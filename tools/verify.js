@@ -785,7 +785,7 @@ function run() {
   console.log('\n=== 六、关于面板与版本管理 ===');
   const AB = (window.H3C && window.H3C.ABOUT) || {};
   ok(AB && typeof AB === 'object', 'H.ABOUT 已挂载到 window.H3C');
-  ok(AB.version === '1.5.0', '当前版本号为 1.5.0', 'got ' + AB.version);
+  ok(AB.version === '1.6.0', '当前版本号为 1.6.0', 'got ' + AB.version);
   ok(AB.contact === 'zyztonorrow@qq.com', '联系方式为 zyztonorrow@qq.com');
   ok(/github\.com/.test(AB.github || ''), '包含 GitHub 仓库地址');
   ok(Array.isArray(AB.changelog) && AB.changelog.length >= 5, '更新日志含 >=5 个版本（1.0.0 起）');
@@ -886,6 +886,71 @@ function run() {
 
   var cssFlat2 = css.replace(/\n/g, ' ');
   ok(/\.term-screen\.typing \.t-line:last-child::after/.test(cssFlat2), '逐字输出时末行显示闪烁光标');
+  ok(/var TYPE_CPS = 380/.test(termSrc) && /var TYPE_LINE_GAP = 30/.test(termSrc),
+    '逐字速度已调慢（380 字符/秒 + 30ms 行间停顿）');
+  ok(/\.term-input\[readonly\]/.test(cssFlat2), '持续任务运行中输入框只读样式已定义');
+
+  /* ---------------- PC 的 ping -t 持续探测 ---------------- */
+  console.log('\n=== PC ping -t 持续探测（随链路/端口状态实时变化）===');
+  try {
+    const hostSrc = fs.readFileSync(path.join(ROOT, 'js/core/host.js'), 'utf8');
+    const simSrc = fs.readFileSync(path.join(ROOT, 'js/core/sim.js'), 'utf8');
+    ok(/Sim\.pingOnce = pingOnce/.test(simSrc), 'Sim 新增 pingOnce（单次探测，供持续 ping 复用真实路径计算）');
+    ok(/Sim\.pingStats = pingStats/.test(simSrc), 'Sim 新增 pingStats（生成收发统计）');
+    ok(/tk === '-t' \|\| tk === '-T'/.test(hostSrc), 'PC ping 支持 -t 参数');
+    ok(/-n ' \|\| tk === '-N'/.test(hostSrc) || /tk === '-n' \|\| tk === '-N'/.test(hostSrc), 'PC ping 支持 -n 指定次数');
+    ok(/return \{ out: 'Ping ' \+ target \+ ': 56 data bytes, press CTRL_C to break', job: job \}/.test(hostSrc),
+      'ping -t 返回后台任务 job（头部 + 循环探测）');
+    ok(/function startJob\(/.test(termSrc) && /function stopJob\(/.test(termSrc), '终端具备 startJob / stopJob 调度');
+    ok(/syncJobInput\(\)/.test(termSrc) && /inputEl\.readOnly = /.test(termSrc), '持续任务期间输入框只读（只能 Ctrl+C）');
+    ok(/srcIpOf\(dev, src\) \|\| anyIpOf\(dev\)/.test(simSrc),
+      '端口 down 时仍取已配置源地址（结果显示为 Request time out，而非"源地址不存在"）');
+
+    // 端到端：ping -t 启动 → 断端口 → 超时 → 恢复 → 恢复 Reply → Ctrl+C 出统计
+    loadScenarioByUI(0);
+    const pcs = S.S.devices.filter(d => H.Host.isHost(d));
+    const pc1 = pcs[0];
+    ok(!!pc1, '场景含主机设备（' + pcs.length + ' 台）');
+    if (pc1) {
+      const sp1 = S.getSession(pc1.id);
+      H.UI.Terminal.openTab(pc1.id);
+      const inpEl = doc.getElementById('term-input');
+      inpEl.value = 'ping -t 192.168.10.20';
+      inpEl.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+      ok(H.UI.Terminal.hasJob(pc1.id), 'ping -t 启动后台持续任务');
+      const txt = sp1.buffer.map(b => String(b.text)).join('\n');
+      ok(/press CTRL_C to break/.test(txt), '输出含 CTRL_C 提示头');
+      ok(/Reply from 192\.168\.10\.20/.test(txt), '立即输出首行 Reply（无需干等 1 秒）');
+      ok(inpEl.readOnly === true, '持续任务期间输入框只读');
+
+      // 断开 PC 上联端口 → 单次探测应变超时
+      let side = null;
+      S.S.links.forEach(l => {
+        if (!side) side = (l.a.dev === pc1.id) ? l.b : ((l.b.dev === pc1.id) ? l.a : null);
+      });
+      ok(!!side, '找到 PC 上联端口');
+      if (side) {
+        const upDev = S.getDevice(side.dev);
+        upDev.cfg.ifaces[side.port].adminUp = false;
+        H.Sim.invalidate();
+        const r1 = H.Sim.pingOnce(pc1, '192.168.10.20', { seq: 9 });
+        ok(r1.ok === false && /Request time out/.test(r1.line), '端口 shutdown 后单次探测为 Request time out',
+          r1.line);
+        upDev.cfg.ifaces[side.port].adminUp = true;
+        H.Sim.invalidate();
+        const r2 = H.Sim.pingOnce(pc1, '192.168.10.20', { seq: 10 });
+        ok(r2.ok === true && /Reply from/.test(r2.line), '端口恢复后探测恢复为 Reply', r2.line);
+      }
+
+      // Ctrl+C 中断 → 输出统计
+      inpEl.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'c', ctrlKey: true, bubbles: true }));
+      ok(!H.UI.Terminal.hasJob(pc1.id), 'Ctrl+C 结束持续任务');
+      const lastTxt = String(sp1.buffer[sp1.buffer.length - 1].text);
+      ok(/Ping statistics for/.test(lastTxt) && /packet\(s\) transmitted/.test(lastTxt) && /Control-C/.test(lastTxt),
+        'Ctrl+C 输出收发统计与 Control-C', lastTxt.split('\n')[0]);
+      ok(inpEl.readOnly === false, '结束后输入框恢复可输入');
+    }
+  } catch (e5) { ok(false, 'ping -t 断言', e5.message); }
 
   /* ---------------- 汇总 ---------------- */
   console.log('\n================ 汇总 ================');

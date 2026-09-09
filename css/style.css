@@ -364,6 +364,8 @@ body.terminal-hidden .term-resizer { display: none; }
   flex: 1; background: transparent; border: none; outline: none; color: #e2e8f0;
   font-family: "Consolas", "Courier New", monospace; font-size: 12.5px;
 }
+/* 持续任务（ping -t）运行中输入框只读，只能 Ctrl+C 中断 */
+.term-input[readonly] { color: var(--muted); cursor: default; }
 .term-screen .t-blank { height: 0; }
 /* 每行一个节点（打字机逐字揭示用） */
 .term-screen .t-line { min-height: 1.5em; }

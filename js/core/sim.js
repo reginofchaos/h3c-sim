@@ -1405,6 +1405,77 @@
   }
   Sim.ping = ping;
 
+  /* 取设备上任一已配置的 IPv4（不要求接口 up） */
+  function anyIpOf(dev) {
+    var l3 = l3Ifaces(dev);
+    for (var i = 0; i < l3.length; i++) if (l3[i].f && l3[i].f.ip) return l3[i].f.ip.addr;
+    return null;
+  }
+
+  /* 单次 ping（供 PC 的 ping -t 持续探测使用）
+   * 每次调用都重新计算转发路径，因此链路断开 / 端口配置变化 / 恢复都会立即反映到结果上。
+   * 返回 { ok, line, time, dstIp, reason, hops } */
+  function pingOnce(dev, target, opts) {
+    opts = opts || {};
+    Sim.invalidate();
+    var src = opts.src || null;
+    var dstIp = target;
+    if (!U.isIp(dstIp)) {
+      var host = findByNameOrHost(dstIp);
+      if (!host) return { ok: false, reason: 'unknown', line: 'Ping: Unknown host ' + dstIp + '.', dstIp: target };
+      dstIp = host;
+    }
+    // 端口 down 时 srcIpOf 取不到源地址（要求接口 up）。持续 ping 场景下网卡 IP 仍在，
+    // 只是链路不通 —— 此时仍用已配置地址继续算路径，结果应为 Request time out 而非"源地址不存在"。
+    var srcIp = srcIpOf(dev, src) || anyIpOf(dev);
+    if (!srcIp) return { ok: false, reason: 'nosrc', line: 'Ping: The source address does not exist.', dstIp: dstIp };
+
+    var p1 = forwardPath(dev, srcIp, dstIp);
+    var ok = p1.ok, reason = p1.reason, hops = p1.hops;
+
+    // 回程检查
+    var backOk = false, backReason = null;
+    if (ok) {
+      var owner = findOwner(dstIp);
+      if (owner) {
+        var p2 = forwardPath(owner.dev, dstIp, (p1.translatedSrc) || srcIp);
+        backOk = p2.ok; backReason = p2.reason;
+      }
+    }
+    if (ok && backOk) learnFromPath(p1, dev, srcIp, dstIp);
+
+    var seq = opts.seq || 1;
+    var res = { dstIp: dstIp, hops: hops, ok: ok && backOk };
+    if (ok && backOk) {
+      var t = parseFloat((1 + Math.random() * 2).toFixed(1));
+      res.time = t;
+      res.line = 'Reply from ' + dstIp + ': bytes=' + (opts.size || 56) +
+        ' Sequence=' + seq + ' ttl=' + (255 - (hops.length - 1)) + ' time=' + t + ' ms';
+    } else {
+      res.reason = (backOk === false && backReason) ? backReason : reason;
+      res.line = 'Request time out';
+    }
+    return res;
+  }
+  Sim.pingOnce = pingOnce;
+
+  /* 依据一批单次 ping 结果生成统计文本（H3C 风格，与 ping 的收尾一致） */
+  function pingStats(dstIp, sent, recv, times) {
+    var out = [];
+    out.push('--- Ping statistics for ' + dstIp + ' ---');
+    out.push(sent + ' packet(s) transmitted, ' + recv + ' packet(s) received, ' +
+      (sent ? (((sent - recv) / sent) * 100).toFixed(2) : '0.00') + '% packet loss');
+    if (recv && times.length) {
+      var mn = Math.min.apply(null, times), mx = Math.max.apply(null, times);
+      var avg = times.reduce(function (a, b) { return a + b; }, 0) / times.length;
+      out.push('round-trip min/avg/max = ' + mn.toFixed(1) + '/' + avg.toFixed(1) + '/' + mx.toFixed(1) + ' ms');
+    } else {
+      out.push('Destination host unreachable');
+    }
+    return out.join('\n');
+  }
+  Sim.pingStats = pingStats;
+
   function tracert(dev, target, opts) {
     opts = opts || {};
     Sim.invalidate();
