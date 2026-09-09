@@ -785,7 +785,7 @@ function run() {
   console.log('\n=== 六、关于面板与版本管理 ===');
   const AB = (window.H3C && window.H3C.ABOUT) || {};
   ok(AB && typeof AB === 'object', 'H.ABOUT 已挂载到 window.H3C');
-  ok(AB.version === '1.7.0', '当前版本号为 1.7.0', 'got ' + AB.version);
+  ok(AB.version === '1.7.1', '当前版本号为 1.7.1', 'got ' + AB.version);
   ok(AB.contact === 'zyztonorrow@qq.com', '联系方式为 zyztonorrow@qq.com');
   ok(/github\.com/.test(AB.github || ''), '包含 GitHub 仓库地址');
   ok(Array.isArray(AB.changelog) && AB.changelog.length >= 5, '更新日志含 >=5 个版本（1.0.0 起）');
@@ -1093,6 +1093,65 @@ function run() {
     doc.getElementById('topo').dispatchEvent(new window.MouseEvent('mouseleave', { bubbles: false }));
     ok(tipEl.style.display === 'none', '鼠标移出画布后小窗隐藏');
   } catch (e6) { ok(false, '1.7.0 拓扑增强断言', e6.message + '\n' + (e6.stack || '').split('\n')[1]); }
+
+  /* ---------------- 十、新设备自动在空白区域放置（不重叠） ---------------- */
+  console.log('\n=== 十、新设备自动避让放置 ===');
+  try {
+    const appSrc = fs.readFileSync(path.join(ROOT, 'js/ui/app.js'), 'utf8');
+    const topoSrc = fs.readFileSync(path.join(ROOT, 'js/ui/topology.js'), 'utf8');
+    ok(/TOPO\.findFreeSpot\(/.test(appSrc), '添加设备时调用 findFreeSpot 自动避让');
+    ok(/function findFreeSpot\(/.test(topoSrc) && /网格螺旋外扩/.test(topoSrc),
+      'findFreeSpot 采用网格螺旋外扩搜索空白位');
+    ok(/function ensureVisible\(/.test(topoSrc), '新设备落在视口外时会自动平移视图使其可见');
+
+    function overlap(a, b) {
+      const H0 = H.UI.Topology.nodeHeight();
+      const ax2 = a.x + H.UI.Topology.nodeWidth(a), ay2 = a.y + H0;
+      const bx2 = b.x + H.UI.Topology.nodeWidth(b), by2 = b.y + H0;
+      return !(ax2 <= b.x || bx2 <= a.x || ay2 <= b.y || by2 <= a.y);
+    }
+    function anyOverlap(list) {
+      for (let i = 0; i < list.length; i++)
+        for (let j = i + 1; j < list.length; j++)
+          if (overlap(list[i], list[j])) return list[i].cfg.hostname + '×' + list[j].cfg.hostname;
+      return null;
+    }
+
+    // 单元：三台故意堆在同一点，findFreeSpot 应把它们分散开
+    S.clearAll();
+    const n1 = S.addDevice('S5130-28S-EI', 'N1', 100, 100);
+    const n2 = S.addDevice('S5130-28S-EI', 'N2', 100, 100);
+    const n3 = S.addDevice('S5130-28S-EI', 'N3', 100, 100);
+    ok(n1.x === n2.x && n2.x === n3.x, '（前置）三台设备初始坐标完全重叠');
+    [n1, n2, n3].forEach(d => {
+      const s = H.UI.Topology.findFreeSpot(d.x, d.y, H.UI.Topology.nodeWidth(d), H.UI.Topology.nodeHeight(), d.id);
+      d.x = s.x; d.y = s.y;
+    });
+    ok(!anyOverlap([n1, n2, n3]), 'findFreeSpot 把三台重叠设备分散到互不重叠的位置',
+      anyOverlap([n1, n2, n3]) || '');
+    ok(new Set([n1.x + ',' + n1.y, n2.x + ',' + n2.y, n3.x + ',' + n3.y]).size === 3,
+      '三台设备最终坐标各不相同');
+
+    // 端到端：连续点击调色板添加 4 台设备，应自动排列而非叠在一起
+    S.clearAll();
+    H.UI.Topology.render();
+    const items = doc.querySelectorAll('.pal-item');
+    ok(items.length > 0, '调色板存在可点击的设备项（' + items.length + ' 个）');
+    for (let i = 0; i < 4; i++) items[0].dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+    ok(S.S.devices.length === 4, '连续点击已添加 4 台设备', String(S.S.devices.length));
+    const bad = anyOverlap(S.S.devices);
+    ok(!bad, '连续添加的 4 台设备两两不重叠', bad || '');
+    ok(S.S.devices.every(d => d.x >= 0 && d.y >= 0), '所有新设备坐标非负（不会跑到画布左上角之外）');
+
+    // 已有设备被占时，新设备从期望点向外让开
+    const first = S.S.devices[0];
+    const before = S.S.devices.length;
+    const spot = H.UI.Topology.findFreeSpot(first.x, first.y, H.UI.Topology.nodeWidth(first),
+      H.UI.Topology.nodeHeight(), null);
+    ok(!(spot.x === first.x && spot.y === first.y), '期望位置被占用时会让开到别处',
+      spot.x + ',' + spot.y + '（原 ' + first.x + ',' + first.y + '）');
+    ok(before === 4 && S.S.devices.length === 4, '避让查询不会新增设备');
+  } catch (e7) { ok(false, '新设备自动避让断言', e7.message + '\n' + (e7.stack || '').split('\n')[1]); }
 
   /* ---------------- 汇总 ---------------- */
   console.log('\n================ 汇总 ================');

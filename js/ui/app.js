@@ -11,8 +11,17 @@
   function $(id) { return document.getElementById(id); }
   function clientToContent(cx, cy) {
     var svg = $('topo'), vp = $('viewport');
-    var pt = svg.createSVGPoint(); pt.x = cx; pt.y = cy;
-    return pt.matrixTransform(vp.getScreenCTM().inverse());
+    if (svg.createSVGPoint) {
+      var m = vp.getScreenCTM && vp.getScreenCTM();
+      if (m) {
+        var pt = svg.createSVGPoint(); pt.x = cx; pt.y = cy;
+        return pt.matrixTransform(m.inverse());
+      }
+    }
+    // 兜底：拿不到 CTM（SVG 未渲染/被隐藏）时用画布矩形 + 视图变换换算
+    var r = svg.getBoundingClientRect();
+    var v = (TOPO && TOPO.getView) ? TOPO.getView() : { scale: 1, tx: 30, ty: 30 };
+    return { x: (cx - r.left - v.tx) / v.scale, y: (cy - r.top - v.ty) / v.scale };
   }
   function statusClass(s) { return s === 'up' ? 'up' : s === 'block' ? 'block' : s === 'down' ? 'down' : 'none'; }
   function statusText(s) { return s === 'up' ? 'UP' : s === 'block' ? 'STP阻塞' : s === 'down' ? 'DOWN' : '未连接'; }
@@ -70,7 +79,13 @@
     var m = H.Model.get(modelId);
     var name = S.uniqueName(m ? m.label : modelId);
     var dev = S.addDevice(modelId, name, Math.round(x), Math.round(y));
+    // 自动避让：若目标位置已被占用（连点添加会堆在一起），向外找最近的空白位置
+    if (TOPO && TOPO.findFreeSpot) {
+      var spot = TOPO.findFreeSpot(dev.x, dev.y, TOPO.nodeWidth(dev), TOPO.nodeHeight(), dev.id);
+      dev.x = spot.x; dev.y = spot.y;
+    }
     TOPO.select(dev.id);
+    if (TOPO && TOPO.ensureVisible) TOPO.ensureVisible(dev);
     return dev;
   }
   function addCenter(modelId) {

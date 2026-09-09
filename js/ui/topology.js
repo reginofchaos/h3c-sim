@@ -611,6 +611,54 @@
     applyView(); saveView();
   }
 
+  /* ---------- 空白区域查找：新设备自动避让，避免叠在一起 ---------- */
+  var GAP_X = 30, GAP_Y = 36;            // 设备之间的最小留白
+  function nodeH() { return BH + 26; }   // 设备主体 + 下方端口指示灯行
+  function devRect(d) { return { x: d.x, y: d.y, w: nodeWidth(d), h: nodeH() }; }
+  function rectsHit(a, b) {
+    return !(a.x + a.w + GAP_X <= b.x || b.x + b.w + GAP_X <= a.x ||
+      a.y + a.h + GAP_Y <= b.y || b.y + b.h + GAP_Y <= a.y);
+  }
+  /* 以 (x0,y0) 为起点做网格螺旋外扩，返回第一个不与任何已有设备重叠的位置 */
+  function findFreeSpot(x0, y0, w, h, exceptId) {
+    w = w || NW; h = h || nodeH();
+    var occ = [], devs = H.State.S.devices, i, k;
+    for (i = 0; i < devs.length; i++) {
+      if (devs[i].id === exceptId) continue;
+      occ.push(devRect(devs[i]));
+    }
+    var gx = Math.max(NW, w) + GAP_X, gy = nodeH() + GAP_Y;
+    function free(px, py) {
+      if (px < 0 || py < 0) return false;
+      var r = { x: px, y: py, w: w, h: h };
+      for (k = 0; k < occ.length; k++) if (rectsHit(r, occ[k])) return false;
+      return true;
+    }
+    if (free(x0, y0)) return { x: Math.round(x0), y: Math.round(y0) };
+    for (var ring = 1; ring <= 80; ring++) {
+      for (var dx = -ring; dx <= ring; dx++) {
+        for (var dy = -ring; dy <= ring; dy++) {
+          if (Math.max(Math.abs(dx), Math.abs(dy)) !== ring) continue;
+          var px = x0 + dx * gx, py = y0 + dy * gy;
+          if (free(px, py)) return { x: Math.round(px), y: Math.round(py) };
+        }
+      }
+    }
+    return { x: Math.round(x0), y: Math.round(y0) };
+  }
+  /* 新设备若落在可视区之外，平移视图让它可见（不改变缩放） */
+  function ensureVisible(d) {
+    if (!svg || !d) return;
+    var sw = svg.clientWidth, sh = svg.clientHeight;
+    if (!sw || !sh) return;
+    var w = nodeWidth(d) * view.scale, h = nodeH() * view.scale;
+    var sx = d.x * view.scale + view.tx, sy = d.y * view.scale + view.ty;
+    if (sx >= 6 && sy >= 6 && sx + w <= sw - 6 && sy + h <= sh - 6) return;
+    view.tx = (sw - w) / 2 - d.x * view.scale;
+    view.ty = (sh - h) / 2 - d.y * view.scale;
+    applyView(); saveView();
+  }
+
   /* ---------- 初始化 ---------- */
   function init() {
     svg = document.getElementById('topo');
@@ -664,6 +712,8 @@
     init: init, render: render, select: select, setSelected: setSelected,
     fit: fit, zoomBy: function (f) { zoomAt(svg.clientWidth / 2, svg.clientHeight / 2, view.scale * f); },
     setLinkMode: setLinkMode, isLinkMode: function () { return linkMode; },
-    getSelected: function () { return sel; }, onSelect: null, onLinkMode: null
+    getSelected: function () { return sel; }, onSelect: null, onLinkMode: null,
+    findFreeSpot: findFreeSpot, ensureVisible: ensureVisible,
+    nodeWidth: nodeWidth, nodeHeight: nodeH, getView: function () { return view; }
   };
 })(window.H3C);
