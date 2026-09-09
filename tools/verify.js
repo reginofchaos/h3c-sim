@@ -785,7 +785,7 @@ function run() {
   console.log('\n=== 六、关于面板与版本管理 ===');
   const AB = (window.H3C && window.H3C.ABOUT) || {};
   ok(AB && typeof AB === 'object', 'H.ABOUT 已挂载到 window.H3C');
-  ok(AB.version === '1.6.1', '当前版本号为 1.6.1', 'got ' + AB.version);
+  ok(AB.version === '1.7.0', '当前版本号为 1.7.0', 'got ' + AB.version);
   ok(AB.contact === 'zyztonorrow@qq.com', '联系方式为 zyztonorrow@qq.com');
   ok(/github\.com/.test(AB.github || ''), '包含 GitHub 仓库地址');
   ok(Array.isArray(AB.changelog) && AB.changelog.length >= 5, '更新日志含 >=5 个版本（1.0.0 起）');
@@ -957,6 +957,142 @@ function run() {
       ok(inpEl.readOnly === false, '结束后输入框恢复可输入');
     }
   } catch (e5) { ok(false, 'ping -t 断言', e5.message); }
+
+  /* ---------------- 九、1.7.0 拓扑增强（徽标 / 平行连线 / 虚线跟随 / 悬浮小窗） ---------------- */
+  console.log('\n=== 九、1.7.0 拓扑交互增强 ===');
+  try {
+    const topoSrc = fs.readFileSync(path.join(ROOT, 'js/ui/topology.js'), 'utf8');
+    const cssSrc = fs.readFileSync(path.join(ROOT, 'css/style.css'), 'utf8');
+
+    // ---- D1 已连线数量徽标 ----
+    ok(/function drawLinkBadge\(/.test(topoSrc) && /'class': 'link-badge'/.test(topoSrc),
+      '徽标由独立函数绘制（<g class="link-badge">）');
+    ok(/\.node \.link-badge rect\s*\{[^}]*fill:\s*var\(--accent\)/.test(cssSrc),
+      '徽标填充用品牌蓝 var(--accent)，未使用红色');
+    ok(!/ef4444|dc2626|#f00|red/i.test((cssSrc.match(/\.node \.link-badge[^\n]*\n?/g) || []).join('')),
+      '徽标样式中不含红色系（#ef4444 / #dc2626 / red）');
+
+    // 重新造一个干净的拓扑
+    S.clearAll();
+    const swA = S.addDevice('S5130-28S-EI', 'SW-A', 60, 80);
+    const swB = S.addDevice('S5130-28S-EI', 'SW-B', 420, 80);
+    const swC = S.addDevice('S5130-28S-EI', 'SW-C', 420, 300);
+    H.UI.Topology.render();
+
+    let badgeTxt = '';
+    S.addLink(swA.id, 'GE1/0/1', swB.id, 'GE1/0/1');
+    H.UI.Topology.render();
+    let bg = doc.querySelector('.node[data-id="' + swA.id + '"] .link-badge text');
+    badgeTxt = bg ? bg.textContent : '';
+    ok(badgeTxt === '1', '设备有 1 条链路时徽标显示 "1"', badgeTxt);
+    ok(!!doc.querySelector('.node[data-id="' + swA.id + '"] .link-badge rect[rx]'),
+      '徽标为圆角胶囊（rect 带 rx 圆角）');
+    ok(!doc.querySelector('.node[data-id="' + swC.id + '"] .link-badge'),
+      '未连线的设备不显示徽标');
+
+    // ---- D2 同一对设备的多条连线平行错开 ----
+    S.addLink(swA.id, 'GE1/0/2', swB.id, 'GE1/0/2');
+    H.UI.Topology.render();
+    bg = doc.querySelector('.node[data-id="' + swA.id + '"] .link-badge text');
+    ok(bg && bg.textContent === '2', '设备有 2 条链路时徽标显示 "2"', bg ? bg.textContent : 'null');
+
+    const twoPaths = Array.prototype.map.call(doc.querySelectorAll('#layer-links .link-line'), p => p.getAttribute('d'));
+    ok(twoPaths.length === 2, '两条链路各有一条可见连线', String(twoPaths.length));
+    ok(twoPaths[0] !== twoPaths[1], '同一对设备的两条连线路径不同（不再完全重叠）');
+
+    // 删掉一条后，剩下那条回到 0 偏移（与两条时都不同）
+    const single = twoPaths[1];
+    S.removeLink(S.S.links[1].id);
+    H.UI.Topology.render();
+    const onePath = doc.querySelector('#layer-links .link-line').getAttribute('d');
+    ok(onePath !== twoPaths[0] && onePath !== twoPaths[1],
+      '只剩一条连线时回到无偏移基准位置（不再错开）');
+
+    // 不同设备对之间的连线互不影响
+    S.addLink(swA.id, 'GE1/0/3', swC.id, 'GE1/0/1');
+    H.UI.Topology.render();
+    const abD = doc.querySelector('#layer-links .link-line[data-link="' + S.S.links[0].id + '"]').getAttribute('d');
+    ok(abD === onePath, 'A–B 单条连线不受其它设备对的连线影响', abD === onePath ? '' : '路径被改变了');
+
+    // ---- D3 端口连线：虚线跟随鼠标 ----
+    ok(/function updateGhost\(/.test(topoSrc) && /'class': 'link-ghost'/.test(topoSrc),
+      '存在虚线跟随逻辑（path.link-ghost）');
+    ok(/\.link-ghost\s*\{[^}]*stroke-dasharray/.test(cssSrc), '虚线样式使用 stroke-dasharray（虚线而非实线）');
+    ok(!!doc.getElementById('layer-ghost'), '已创建 #layer-ghost 图层');
+
+    S.clearAll();
+    const d1 = S.addDevice('S5130-28S-EI', 'G1', 60, 80);
+    const d2 = S.addDevice('S5130-28S-EI', 'G2', 420, 80);
+    H.UI.Topology.render();
+    const dot1 = doc.querySelector('.node[data-id="' + d1.id + '"] .port-dot-hit[data-port="GE1/0/1"]');
+    ok(!!dot1, '能定位到设备端口圆点');
+    if (dot1) {
+      dot1.dispatchEvent(new window.MouseEvent('click', { bubbles: true, clientX: 100, clientY: 100 }));
+      ok(!!doc.querySelector('#layer-ghost .link-ghost'), '点击起点端口后出现跟随虚线');
+      ok(!!doc.querySelector('#layer-ghost .ghost-dot'), '虚线末端有跟随光标的圆点');
+      const gd = doc.querySelector('#layer-ghost .link-ghost').getAttribute('d');
+      ok(/^M[\d.]+,[\d.]+ L[\d.]+,[\d.]+$/.test(gd), '虚线路径为 起点→光标 的直线', gd);
+
+      // 移动鼠标 → 虚线终点跟随变化
+      window.dispatchEvent(new window.MouseEvent('mousemove', { bubbles: true, clientX: 300, clientY: 260 }));
+      const gd2 = doc.querySelector('#layer-ghost .link-ghost').getAttribute('d');
+      ok(gd2 && gd2 !== gd, '鼠标移动后虚线终点跟随更新', gd2);
+
+      // 点击另一设备端口 → 建立链路并清除虚线
+      const dot2 = doc.querySelector('.node[data-id="' + d2.id + '"] .port-dot-hit[data-port="GE1/0/5"]');
+      ok(!!dot2, '能定位到对端设备端口圆点');
+      if (dot2) {
+        dot2.dispatchEvent(new window.MouseEvent('click', { bubbles: true, clientX: 460, clientY: 100 }));
+        ok(S.S.links.length === 1, '点击第二个端口后建立链路', String(S.S.links.length));
+        ok(S.S.links[0].a.port === 'GE1/0/1' && S.S.links[0].b.port === 'GE1/0/5',
+          '链路端口为 GE1/0/1 ⇔ GE1/0/5');
+        ok(!doc.querySelector('#layer-ghost .link-ghost'), '链路建立后虚线被清除');
+      }
+
+      // Esc 取消
+      const dot3 = doc.querySelector('.node[data-id="' + d1.id + '"] .port-dot-hit[data-port="GE1/0/2"]');
+      if (dot3) {
+        dot3.dispatchEvent(new window.MouseEvent('click', { bubbles: true, clientX: 100, clientY: 100 }));
+        ok(!!doc.querySelector('#layer-ghost .link-ghost'), '再次点击端口重新出现虚线');
+        window.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+        ok(!doc.querySelector('#layer-ghost .link-ghost'), 'Esc 取消连线并清除虚线');
+        ok(S.S.links.length === 1, 'Esc 取消不会误建链路', String(S.S.links.length));
+      }
+    }
+
+    // ---- D4 悬浮信息小窗 ----
+    const tipEl = doc.getElementById('topo-tip');
+    ok(!!tipEl, '存在 #topo-tip 悬浮信息小窗容器');
+    ok(/\.topo-tip\s*\{[^}]*pointer-events:\s*none/.test(cssSrc), '小窗不拦截鼠标事件（pointer-events:none）');
+
+    function hover(el) {
+      el.dispatchEvent(new window.MouseEvent('mousemove', { bubbles: true, clientX: 200, clientY: 150 }));
+      return tipEl ? tipEl.textContent : '';
+    }
+    H.UI.Topology.render();
+    const nodeG1 = doc.querySelector('.node[data-id="' + d1.id + '"]');
+    const tDev = hover(nodeG1);
+    ok(tipEl.style.display === 'block', '鼠标移到设备上时小窗显示');
+    ok(/G1/.test(tDev) && /S5130/.test(tDev), '设备小窗含主机名与型号', tDev.slice(0, 40));
+    ok(/端口/.test(tDev) && /链路/.test(tDev), '设备小窗含端口数、链路数摘要');
+
+    const lnkHit = doc.querySelector('#layer-links .link-hit');
+    const tLink = hover(lnkHit);
+    ok(/链路/.test(tLink) && /GE1\/0\/1/.test(tLink) && /GE1\/0\/5/.test(tLink),
+      '链路小窗含两端设备与端口', tLink.slice(0, 60));
+
+    const pDot = doc.querySelector('.node[data-id="' + d1.id + '"] .port-dot-hit[data-port="GE1/0/1"]');
+    const tPort = hover(pDot);
+    ok(/GE1\/0\/1/.test(tPort) && /状态/.test(tPort), '端口小窗含端口名与状态', tPort.slice(0, 60));
+    ok(/G2/.test(tPort), '已连接端口小窗显示对端设备', tPort.slice(0, 60));
+
+    const pFree = doc.querySelector('.node[data-id="' + d1.id + '"] .port-dot-hit[data-port="GE1/0/9"]');
+    const tFree = hover(pFree);
+    ok(/未连接/.test(tFree), '空闲端口小窗提示未连接', tFree.slice(0, 60));
+
+    doc.getElementById('topo').dispatchEvent(new window.MouseEvent('mouseleave', { bubbles: false }));
+    ok(tipEl.style.display === 'none', '鼠标移出画布后小窗隐藏');
+  } catch (e6) { ok(false, '1.7.0 拓扑增强断言', e6.message + '\n' + (e6.stack || '').split('\n')[1]); }
 
   /* ---------------- 汇总 ---------------- */
   console.log('\n================ 汇总 ================');
