@@ -2,6 +2,12 @@
 
 > 迭代版本号自 **1.0.0** 起，按日汇总版本跨度；回滚的修改不记录。
 
+## [1.7.5] — 2026-09-11 · PC 状态面板显示 MAC 地址（与转发实际 MAC 一致）
+- **PC / 服务器状态面板新增「MAC 地址」**：选中终端后，右侧「终端配置」面板直接显示本机 MAC（`xxxx-xxxx-xxxx`），做 MAC 地址表实验时不必再敲 `ipconfig /all`
+- **统一 MAC 来源为 `Sim.bridgeMac`**：此前 `ipconfig /all` 用 `U.genMac(dev.id)`、转发实际用 `U.genMac(dev.id + dev.name)`，**两者对不上**（面板看到的 MAC 与交换机 MAC 表里的不是同一个）。现在面板、`ipconfig /all`、交换机 MAC 表、ARP 表全部一致
+- `ipconfig /all` 的物理地址改为 `xxxx-xxxx-xxxx` 横杠格式（原为冒号格式），符合 Windows 显示习惯
+- 回归测试 `verify.js` 达 **332** 项断言全通过
+
 ## [1.7.4] — 2026-09-11 · 补齐 display vlan brief，并修正 MAC/ARP 表学习
 - **新增 `display vlan brief`（可缩写 `dis vlan bri`）**：以「VLAN ID / 名称 / 成员端口」三列简要列出全部 VLAN。此前该命令在真机上很常用，但仿真器中缺失，执行会报 Unrecognized command
 - **修正 MAC 地址表学习（端口归属）**：源 MAC 原本被错记到**出端口**，现改为记在帧的**入端口**；同时补全回程方向的目的 MAC。现在交换机能学全通信双方的 MAC，且端口归属与真机一致

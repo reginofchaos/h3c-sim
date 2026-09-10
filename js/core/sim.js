@@ -19,6 +19,9 @@
     if (!dev.rt.bmac) dev.rt.bmac = U.genMac(dev.id + dev.name);
     return dev.rt.bmac;
   }
+  /* 导出：UI 面板 / PC 终端 ipconfig 都应以它为准，
+     否则显示的 MAC 会与转发实际使用（MAC 表、ARP 表）的不一致 */
+  Sim.bridgeMac = bridgeMac;
   function bridgeId(dev) {
     var inst = (dev.cfg.stp.instances && dev.cfg.stp.instances[0]) || {};
     var prio = inst.priority != null ? inst.priority : dev.cfg.stp.priority;

@@ -4,10 +4,21 @@
   "author": "烧坏的内存条",
   "contact": "zyztonorrow@qq.com",
   "github": "https://github.com/reginofchaos/h3c-sim",
-  "version": "1.7.4",
+  "version": "1.7.5",
   "updated": "2026-09-11",
   "license": "教学用途 · 自由用于课堂实验",
   "changelog": [
+    {
+      "version": "1.7.5",
+      "date": "2026-09-11",
+      "title": "PC 状态面板显示 MAC 地址（与转发实际 MAC 一致）",
+      "changes": [
+        "选中 PC / 服务器后，右侧「终端配置」面板新增「MAC 地址」一行，无需敲命令即可查看本机 MAC",
+        "统一 MAC 来源为 Sim.bridgeMac：面板、ipconfig /all 与转发实际使用（交换机 MAC 表、ARP 表）的 MAC 现在完全一致（此前 ipconfig 用 genMac(id)、转发用 genMac(id+name)，两者对不上）",
+        "ipconfig /all 的物理地址改为 xxxx-xxxx-xxxx 横杠格式，符合 Windows 显示习惯",
+        "回归测试 verify.js 达 332 项断言全通过"
+      ]
+    },
     {
       "version": "1.7.4",
       "date": "2026-09-11",

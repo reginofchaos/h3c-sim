@@ -785,7 +785,7 @@ function run() {
   console.log('\n=== 六、关于面板与版本管理 ===');
   const AB = (window.H3C && window.H3C.ABOUT) || {};
   ok(AB && typeof AB === 'object', 'H.ABOUT 已挂载到 window.H3C');
-  ok(AB.version === '1.7.4', '当前版本号为 1.7.4', 'got ' + AB.version);
+  ok(AB.version === '1.7.5', '当前版本号为 1.7.5', 'got ' + AB.version);
   ok(AB.contact === 'zyztonorrow@qq.com', '联系方式为 zyztonorrow@qq.com');
   ok(/github\.com/.test(AB.github || ''), '包含 GitHub 仓库地址');
   ok(Array.isArray(AB.changelog) && AB.changelog.length >= 5, '更新日志含 >=5 个版本（1.0.0 起）');
@@ -1276,6 +1276,56 @@ function run() {
     E.exec(sw2, ss9, 'return');
   } catch (e9) {
     ok(false, 'display vlan brief / MAC / ARP 断言', e9.message + '\n' + (e9.stack || '').split('\n')[1]);
+  }
+
+  /* ---------------- 十三、PC 状态面板显示 MAC 地址 ---------------- */
+  console.log('\n=== 十三、PC 状态面板显示 MAC 地址 ===');
+  try {
+    const U2 = H.U;
+    S.clearAll(); H.UI.Topology.render();
+    const swM = S.addDevice('S5130-28S-EI', 'SWM', 200, 200);
+    const pcA = S.addDevice('PC', 'PCA', 100, 400);
+    const pcB = S.addDevice('PC', 'PCB', 400, 400);
+    S.addLink(swM.id, 'GE1/0/1', pcA.id, 'GE0/1');
+    S.addLink(swM.id, 'GE1/0/2', pcB.id, 'GE0/1');
+    const sA = S.getSession(pcA.id);
+    H.Host.applyIp(pcA, '192.168.10.1', '255.255.255.0', null);
+    H.Host.applyIp(pcB, '192.168.10.2', '255.255.255.0', null);
+
+    ok(typeof Sim.bridgeMac === 'function', 'Sim.bridgeMac 已导出（面板与转发共用同一 MAC 来源）');
+
+    // 选中 PC → 检视器渲染「终端配置」面板
+    H.UI.Topology.select(pcA.id);
+    S.emit('change');
+    const inspHtml = doc.getElementById('inspector-body').innerHTML;
+    ok(/MAC 地址/.test(inspHtml), 'PC 状态面板出现「MAC 地址」一行');
+    const mm = inspHtml.match(/MAC 地址<\/span><span><b>([^<]+)<\/b>/);
+    const panelMac = mm ? mm[1] : '';
+    ok(/^[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}$/.test(panelMac), '面板 MAC 为 xxxx-xxxx-xxxx 格式', panelMac);
+    ok(panelMac === U2.macFmt(Sim.bridgeMac(pcA)),
+      '面板 MAC 与 Sim.bridgeMac(PC) 一致（即转发实际使用的 MAC）',
+      'panel=' + panelMac + ' bridge=' + U2.macFmt(Sim.bridgeMac(pcA)));
+
+    // ipconfig /all 的物理地址应与面板一致
+    const ipc = E.exec(pcA, sA, 'ipconfig /all').out;
+    const mi = ipc.match(/物理地址[^\n]*?:\s*([0-9a-fA-F-]{14})/);
+    ok(!!mi && mi[1] === panelMac, 'ipconfig /all 的物理地址与面板 MAC 一致',
+      'ipconfig=' + (mi ? mi[1] : '未匹配') + ' panel=' + panelMac);
+
+    // 与交换机学到的 MAC 表项一致（教学关键点：面板看到的 MAC 能对上 MAC 表）
+    Sim.ping(pcA, '192.168.10.2', {});
+    let inTbl = false;
+    Object.keys(swM.rt.mac || {}).forEach(function (v) {
+      Object.keys(swM.rt.mac[v] || {}).forEach(function (p) {
+        Object.keys(swM.rt.mac[v][p] || {}).forEach(function (mac) {
+          if (U2.macFmt(mac) === panelMac) inTbl = true;
+        });
+      });
+    });
+    ok(inTbl, '面板显示的 MAC 与交换机 MAC 表中学到的表项一致',
+      'panel=' + panelMac + ' tbl=' + JSON.stringify(swM.rt.mac));
+  } catch (e10) {
+    ok(false, 'PC 面板 MAC 断言', e10.message + '\n' + (e10.stack || '').split('\n')[1]);
   }
 
   /* ---------------- 汇总 ---------------- */

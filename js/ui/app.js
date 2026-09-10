@@ -150,6 +150,9 @@
     var h = '<div class="sec-title">终端配置</div>';
     h += '<div class="kv"><span>接口</span><span>' + esc(p.name) + '</span></div>';
     h += '<div class="kv"><span>IP 地址</span><span><b>' + esc(ip) + '</b></span></div>';
+    // MAC 取 Sim.bridgeMac：与转发实际使用（交换机 MAC 表 / ARP 表）的 MAC 一致
+    var macTxt = (H.Sim && H.Sim.bridgeMac) ? U.macFmt(H.Sim.bridgeMac(d)) : '';
+    if (macTxt) h += '<div class="kv"><span>MAC 地址</span><span><b>' + esc(macTxt) + '</b></span></div>';
     h += '<div class="host-row"><label>IP</label><input id="pc-ip" value="' + (f && f.ip ? f.ip.addr : '') + '"></div>';
     h += '<div class="host-row"><label>掩码</label><input id="pc-mask" value="' + (f && f.ip ? U.lenMask(U.maskLen(f.ip.mask)) : '255.255.255.0') + '"></div>';
     h += '<div class="host-row"><label>网关</label><input id="pc-gw" value="' + (d.cfg.defaultRoute || '') + '" placeholder="默认网关"></div>';

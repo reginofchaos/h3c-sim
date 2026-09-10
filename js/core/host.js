@@ -83,7 +83,8 @@
       });
       if (dev.cfg.ipv6DefaultRoute) lines.push('   默认网关 IPv6 . . . . . . . . . : ' + U.ipv6Compress(dev.cfg.ipv6DefaultRoute));
     }
-    if (all) lines.push('   物理地址 . . . . . . . . . . . : ' + U.genMac(dev.id));
+    // 用 Sim.bridgeMac 而非 U.genMac(dev.id)：与转发实际使用的 MAC（MAC 表 / ARP 表）保持一致
+    if (all) lines.push('   物理地址 . . . . . . . . . . . : ' + U.macFmt(H.Sim.bridgeMac(dev)));
     return lines.join('\n');
   }
 
