@@ -75,12 +75,14 @@
       it.addEventListener('click', function () { addCenter(it.getAttribute('data-model')); });
     });
   }
-  function addDeviceAt(modelId, x, y) {
+  /* useColumn=true（默认，点击调色板）：自动左对齐竖列排布；
+     useColumn=false（拖拽放置）：落在鼠标指示的位置，不重写坐标 */
+  function addDeviceAt(modelId, x, y, useColumn) {
     var m = H.Model.get(modelId);
     var name = S.uniqueName(m ? m.label : modelId);
     var dev = S.addDevice(modelId, name, Math.round(x), Math.round(y));
-    // 自动列排布：从现有拓扑整体左上角空白处起，左对齐、自上而下、等间距排成一列
-    if (TOPO && TOPO.placeNewDevice) {
+    // 自动列排布：从现有拓扑整体左上角空白处起，左对齐、自上而下、等间距排成一列（仅点击路径）
+    if (useColumn !== false && TOPO && TOPO.placeNewDevice) {
       TOPO.placeNewDevice(dev, TOPO.nodeWidth(dev), TOPO.nodeHeight());
     }
     TOPO.select(dev.id);
@@ -1111,7 +1113,7 @@
       e.preventDefault();
       var mid = e.dataTransfer.getData('text/model'); if (!mid) return;
       var p = clientToContent(e.clientX, e.clientY);
-      addDeviceAt(mid, p.x - 75, p.y - 25);
+      addDeviceAt(mid, p.x - 75, p.y - 25, false);
     });
 
     // 启动：优先读取本地，否则加载首个示例

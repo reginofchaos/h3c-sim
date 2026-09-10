@@ -785,7 +785,7 @@ function run() {
   console.log('\n=== 六、关于面板与版本管理 ===');
   const AB = (window.H3C && window.H3C.ABOUT) || {};
   ok(AB && typeof AB === 'object', 'H.ABOUT 已挂载到 window.H3C');
-  ok(AB.version === '1.7.2', '当前版本号为 1.7.2', 'got ' + AB.version);
+  ok(AB.version === '1.7.3', '当前版本号为 1.7.3', 'got ' + AB.version);
   ok(AB.contact === 'zyztonorrow@qq.com', '联系方式为 zyztonorrow@qq.com');
   ok(/github\.com/.test(AB.github || ''), '包含 GitHub 仓库地址');
   ok(Array.isArray(AB.changelog) && AB.changelog.length >= 5, '更新日志含 >=5 个版本（1.0.0 起）');
@@ -1162,6 +1162,42 @@ function run() {
     for (let i = 1; i < nys.length; i++) if (nys[i] - nys[i - 1] !== nys[1] - nys[0]) eq2 = false;
     ok(eq2, '新列自身等间距', nys.join(','));
   } catch (e7) { ok(false, '新设备自动列排布断言', e7.message + '\n' + (e7.stack || '').split('\n')[1]); }
+
+  /* ---------------- 十一、拖拽添加落在鼠标指示位置（不走竖列） ---------------- */
+  console.log('\n=== 十一、拖拽添加落在鼠标位置 ===');
+  try {
+    const stageEl = doc.getElementById('stage');
+    ok(!!stageEl, '存在 stage 拖放目标');
+    // 模拟从调色板拖拽设备并松手在 stage 的某一点
+    S.clearAll(); H.UI.Topology.render();
+    const dropEv = new window.Event('drop', { bubbles: true });
+    dropEv.dataTransfer = { getData: function (k) { return k === 'text/model' ? 'S5130-28S-EI' : ''; } };
+    dropEv.clientX = 400; dropEv.clientY = 300;
+    stageEl.dispatchEvent(dropEv);
+    ok(S.S.devices.length === 1, '拖拽放置已添加 1 台设备', String(S.S.devices.length));
+    function dragDrop(cx, cy) {
+      S.clearAll(); H.UI.Topology.render();
+      const ev = new window.Event('drop', { bubbles: true });
+      ev.dataTransfer = { getData: function (k) { return k === 'text/model' ? 'S5130-28S-EI' : ''; } };
+      ev.clientX = cx; ev.clientY = cy;
+      stageEl.dispatchEvent(ev);
+      return S.S.devices[0];
+    }
+    const d1 = dragDrop(400, 300);
+    ok(S.S.devices.length === 1, '拖拽放置已添加 1 台设备', String(S.S.devices.length));
+    ok(d1.x !== 40, '拖拽设备未落到竖列锚点 40（走鼠标位置而非列排布）', 'x=' + d1.x);
+    const d2 = dragDrop(500, 400);
+    ok(Math.abs((d2.x - d1.x) - (d2.y - d1.y)) < 3,
+      '拖拽落点随鼠标等比例移动（x/y 位移一致，无重排到固定锚点）',
+      'dx=' + (d2.x - d1.x) + ' dy=' + (d2.y - d1.y));
+    ok((d2.x - d1.x) > 30 && (d2.y - d1.y) > 30, '拖拽落点随鼠标移动而移动', 'dx=' + (d2.x - d1.x));
+    // 与点击竖列对比：点击添加会被重排到竖列锚点（空画布下 x=40）
+    S.clearAll(); H.UI.Topology.render();
+    doc.querySelectorAll('.pal-item')[0].dispatchEvent(new window.MouseEvent('click', { bubbles: true }));
+    ok(S.S.devices[0].x === 40, '点击路径仍走竖列锚点（空画布 x=40）', 'x=' + S.S.devices[0].x);
+    ok(S.S.devices[0].x !== d1.x, '拖拽落点与点击竖列落点不同（两条路径已区分）',
+      'dragX=' + d1.x + ' clickX=' + S.S.devices[0].x);
+  } catch (e8) { ok(false, '拖拽添加落点断言', e8.message + '\n' + (e8.stack || '').split('\n')[1]); }
 
   /* ---------------- 汇总 ---------------- */
   console.log('\n================ 汇总 ================');

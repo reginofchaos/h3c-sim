@@ -11,11 +11,22 @@
     author: '烧坏的内存条',
     contact: 'zyztonorrow@qq.com',
     github: 'https://github.com/reginofchaos/h3c-sim',
-    version: '1.7.2',
+    version: '1.7.3',
     updated: '2026-09-11',
     license: '教学用途 · 自由用于课堂实验',
     // 按日汇总的版本跨度；index 0 为最新版本
     changelog: [
+      {
+        version: '1.7.3',
+        date: '2026-09-11',
+        title: '拖拽添加设备落在鼠标指示位置（与点击竖列区分）',
+        changes: [
+          '拖拽添加与点击添加区分：点击调色板仍走「左对齐竖列」自动排布；从调色板拖拽到画布松手时，设备落在鼠标指示的位置（拖放点居中），不再被重排到竖列锚点',
+          'addDeviceAt 增加 useColumn 参数：拖拽路径传 false 跳过 placeNewDevice 列重排，仅点击路径 useColumn 默认 true 走竖列',
+          '列游标 colSlot 仅服务于点击竖列；拖拽手动落点不影响列游标逻辑',
+          '回归测试 verify.js 达 309 项断言全通过'
+        ]
+      },
       {
         version: '1.7.2',
         date: '2026-09-11',
