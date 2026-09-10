@@ -9,7 +9,7 @@
 
 > 《计算机网络设备配置》课程配套教学工具 —— 纯前端、零依赖的 H3C（Comware）风格交换机 / 路由器仿真终端。
 
-[![当前版本](https://img.shields.io/badge/version-1.4.0-blue)](CHANGELOG.md)
+[![当前版本](https://img.shields.io/badge/version-1.7.5-blue)](CHANGELOG.md)
 [![许可](https://img.shields.io/badge/license-教学用途-green)](LICENSE)
 
 ### 简介
@@ -36,6 +36,16 @@ H3C 网络仿真实验室是一个**纯前端、无构建步骤**的网络设备
 
 | 版本 | 日期 | 要点 |
 | --- | --- | --- |
+| 1.7.5 | 2026-09-11 | PC 状态面板显示 MAC 地址（与转发实际 MAC 一致） |
+| 1.7.4 | 2026-09-11 | 新增 display vlan brief，修正 MAC/ARP 表学习、修复三层交换机 VLANIF 恒 down |
+| 1.7.3 | 2026-09-11 | 拖拽添加设备落在鼠标指示位置（与点击竖列排布区分） |
+| 1.7.2 | 2026-09-11 | 新建设备改为左对齐竖列排布 |
+| 1.7.1 | 2026-09-10 | 新设备自动避让空白区 + 自动平移画布使其可见 |
+| 1.7.0 | 2026-09-10 | 拓扑交互增强：数量徽标 / 平行连线 / 虚线跟随 / 悬浮小窗 |
+| 1.6.1 | 2026-09-09 | 逐字输出逐行占位 + 长输出不再秒出 |
+| 1.6.0 | 2026-09-09 | PC 持续 ping（ping -t）+ 逐字输出节奏调优 |
+| 1.5.0 | 2026-09-09 | 终端逐字逐行输出（贴近真实设备回显） |
+| 1.4.1 | 2026-09-03 | ping/tracert 去歧义 + 关于面板收尾 |
 | 1.4.0 | 2026-09-03 | 关于面板 + 迭代版本管理 + GitHub 发布 |
 | 1.3.0 | 2026-09-03 | 自查修复 tracert 逐跳显示 |
 | 1.2.0 | 2026-09-02 | IS-IS 路由 + Route-Policy |
@@ -59,7 +69,7 @@ H3C 网络仿真实验室是一个**纯前端、无构建步骤**的网络设备
 
 > A teaching tool for the *Computer Network Device Configuration* course — a pure-frontend, zero-dependency H3C (Comware) style switch / router simulation terminal.
 
-[![Version](https://img.shields.io/badge/version-1.4.0-blue)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.7.5-blue)](CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-Educational-green)](LICENSE)
 
 ### Introduction
@@ -71,6 +81,7 @@ H3C Network Simulation Lab is a **pure-frontend, build-free** network device con
 - **Command-line terminal**: view system (user / system / interface / protocol views), `?` help, `Tab` completion, `↑/↓` history, `undo` rollback.
 - **Command coverage**: basic management, Layer 2 (VLAN / STP / link aggregation / port mirroring), Layer 3, static / RIP / OSPF / BGP routing, ACL, QoS, security (AAA / SSH / Telnet / 802.1X), network management (SNMP / NTP / logging), and monitoring (`display` family).
 - **Realistic forwarding simulation**: L2/L3 forwarding, STP blocking, end-to-end ping / tracert verification across the whole network (IPv4 and IPv6 dual-stack).
+- **Table learning visualization**: switch MAC table (source MAC recorded on the **ingress port**), ARP table (maintained only by **routers / PCs / switches with L3 interfaces such as VLANIF**), and `display vlan brief` (alias `dis vlan bri`) to see all VLANs and member ports at a glance. PC / server status panel shows the real MAC, identical to the one used in forwarding.
 - **Advanced modules**: WAN PPP/HDLC access, NAT (address pool / NAPT / static / inside server), VRRP gateway redundancy, IS-IS routing + Route-Policy, IPv6 dual-stack.
 - **Topology editor**: drag-and-drop devices, port-to-port links, link status indicators, device deletion / reset.
 - **Project & config storage**: save/load (localStorage), export/open project files (`.json`), export/import device config (`.cfg`).
@@ -86,6 +97,16 @@ Iterative versioning starts at **1.0.0**, summarized per day; rolled-back change
 
 | Version | Date | Highlights |
 | --- | --- | --- |
+| 1.7.5 | 2026-09-11 | PC status panel shows MAC address (consistent with forwarding MAC) |
+| 1.7.4 | 2026-09-11 | Add `display vlan brief`; fix MAC/ARP table learning; fix L3 switch VLANIF always down |
+| 1.7.3 | 2026-09-11 | Drag-drop device lands at cursor (distinct from click column layout) |
+| 1.7.2 | 2026-09-11 | New devices placed in left-aligned vertical column |
+| 1.7.1 | 2026-09-10 | New devices auto-avoid overlap + auto pan canvas into view |
+| 1.7.0 | 2026-09-10 | Topology UX: count badge / parallel links / dashed follow / hover tip |
+| 1.6.1 | 2026-09-09 | Per-line typewriter placeholder + long output no longer instant |
+| 1.6.0 | 2026-09-09 | PC continuous ping (ping -t) + typewriter pacing tuning |
+| 1.5.0 | 2026-09-09 | Terminal typewriter line-by-line output |
+| 1.4.1 | 2026-09-03 | ping/tracert disambiguation + About panel cleanup |
 | 1.4.0 | 2026-09-03 | About panel + iterative versioning + GitHub release |
 | 1.3.0 | 2026-09-03 | Self-check fix: tracert hop-by-hop display |
 | 1.2.0 | 2026-09-02 | IS-IS routing + Route-Policy |
