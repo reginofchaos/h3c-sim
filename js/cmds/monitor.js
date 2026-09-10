@@ -358,6 +358,33 @@
       return { out: ' Total VLANs: ' + ks.length + '\n The VLANs include:\n ' + ks.join(',') };
     }
   });
+  R({
+    views: ['*'], pat: 'display vlan brief', global: true, seq: 'monitor',
+    help: '显示所有 VLAN 的简要信息（VLAN ID / 名称 / 成员端口）',
+    run: function (c) { return { out: vlanBrief(c.dev) }; }
+  });
+  function vlanBrief(dev) {
+    var ks = Object.keys(dev.cfg.vlans).map(Number).sort(function (a, b) { return a - b; });
+    var rows = ks.map(function (vid) {
+      var v = dev.cfg.vlans[vid] || {};
+      var ports = [];
+      Object.keys(dev.cfg.ifaces).forEach(function (n) {
+        var f = dev.cfg.ifaces[n];
+        if (f.mode === 'route' || f.aggregation != null) return;
+        var isPhy = dev.ports.some(function (p) { return p.name === n; });
+        if (!isPhy && !/^BAGG/.test(n)) return;
+        if (f.linkType === 'access') { if ((f.accessVlan != null ? f.accessVlan : 1) === vid) ports.push(fullName(n)); }
+        else if (f.linkType === 'trunk') { if ((f.permitVlans || []).indexOf(vid) >= 0) ports.push(fullName(n)); }
+        else if (f.linkType === 'hybrid') {
+          if ((f.untaggedVlans || []).indexOf(vid) >= 0) ports.push(fullName(n));
+          else if ((f.permitVlans || []).indexOf(vid) >= 0) ports.push(fullName(n));
+        }
+      });
+      return [String(vid), v.name || ('VLAN ' + ('0000' + vid).slice(-4)), ports.join(' ')];
+    });
+    return 'Brief information about all VLANs:\nSupported Minimum Unit: 1\n' +
+      U.table(['VLAN ID', 'Name', 'Port'], rows);
+  }
   function vlanAll(dev) {
     var ks = Object.keys(dev.cfg.vlans).map(Number).sort(function (a, b) { return a - b; });
     var s = ' Total VLANs: ' + ks.length + '\n The VLANs include:\n';

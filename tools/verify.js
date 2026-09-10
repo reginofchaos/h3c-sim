@@ -785,7 +785,7 @@ function run() {
   console.log('\n=== 六、关于面板与版本管理 ===');
   const AB = (window.H3C && window.H3C.ABOUT) || {};
   ok(AB && typeof AB === 'object', 'H.ABOUT 已挂载到 window.H3C');
-  ok(AB.version === '1.7.3', '当前版本号为 1.7.3', 'got ' + AB.version);
+  ok(AB.version === '1.7.4', '当前版本号为 1.7.4', 'got ' + AB.version);
   ok(AB.contact === 'zyztonorrow@qq.com', '联系方式为 zyztonorrow@qq.com');
   ok(/github\.com/.test(AB.github || ''), '包含 GitHub 仓库地址');
   ok(Array.isArray(AB.changelog) && AB.changelog.length >= 5, '更新日志含 >=5 个版本（1.0.0 起）');
@@ -1198,6 +1198,85 @@ function run() {
     ok(S.S.devices[0].x !== d1.x, '拖拽落点与点击竖列落点不同（两条路径已区分）',
       'dragX=' + d1.x + ' clickX=' + S.S.devices[0].x);
   } catch (e8) { ok(false, '拖拽添加落点断言', e8.message + '\n' + (e8.stack || '').split('\n')[1]); }
+
+  /* ---------------- 十二、display vlan brief 与 MAC/ARP 表学习 ---------------- */
+  console.log('\n=== 十二、display vlan brief 与 MAC/ARP 表学习 ===');
+  try {
+    function ex9(dev, sess, cmd) { const r = E.exec(dev, sess, cmd); return (r && r.out != null) ? r.out : String(r); }
+    S.clearAll(); H.UI.Topology.render();
+    const sw2 = S.addDevice('S5130-28S-EI', 'SW9', 200, 200);
+    const p1 = S.addDevice('PC', 'P1', 100, 400);
+    const p2 = S.addDevice('PC', 'P2', 400, 400);
+    S.addLink(sw2.id, 'GE1/0/1', p1.id, 'GE0/1');
+    S.addLink(sw2.id, 'GE1/0/2', p2.id, 'GE0/1');
+    const ss9 = S.getSession(sw2.id);
+    H.Host.applyIp(p1, '192.168.10.1', '255.255.255.0', null);
+    H.Host.applyIp(p2, '192.168.10.2', '255.255.255.0', null);
+
+    // 划分 VLAN 10，两口均为 access
+    E.exec(sw2, ss9, 'system-view');
+    E.exec(sw2, ss9, 'vlan 10');
+    E.exec(sw2, ss9, 'port GigabitEthernet1/0/1');
+    E.exec(sw2, ss9, 'port GigabitEthernet1/0/2');
+    E.exec(sw2, ss9, 'quit');
+    ['GigabitEthernet1/0/1', 'GigabitEthernet1/0/2'].forEach(function (pn) {
+      E.exec(sw2, ss9, 'interface ' + pn);
+      E.exec(sw2, ss9, 'port link-type access');
+      E.exec(sw2, ss9, 'port access vlan 10');
+      E.exec(sw2, ss9, 'quit');
+    });
+    E.exec(sw2, ss9, 'return');
+
+    /* 1) display vlan brief —— 真机常用命令，此前仿真器缺失 */
+    const vb = ex9(sw2, ss9, 'display vlan brief');
+    ok(/Brief information about all VLANs/.test(vb), 'display vlan brief 可执行并输出简要 VLAN 列表', vb.slice(0, 60));
+    ok(/VLAN ID/.test(vb) && /Name/.test(vb) && /Port/.test(vb), 'display vlan brief 含 VLAN ID / Name / Port 三列表头');
+    ok(/\b10\b/.test(vb) && /GigabitEthernet1\/0\/1/.test(vb), 'display vlan brief 列出 VLAN 10 及其成员端口 GE1/0/1');
+    ok(/Brief information about all VLANs/.test(ex9(sw2, ss9, 'dis vlan bri')),
+      '缩写 dis vlan bri 与 display vlan brief 等价');
+
+    /* 2) MAC 表：源 MAC 记入端口，两台 PC 都应学到 */
+    const pr9 = Sim.ping(p1, '192.168.10.2', {});
+    ok(pr9.ok === true, '同 VLAN 下 PC1 ping PC2 二层互通', String(pr9.ok));
+    const macV10 = sw2.rt.mac['10'] || {};
+    ok(Object.keys(macV10).length === 2, '交换机学到 2 条 MAC 表项（PC1 与 PC2 各一条）',
+      'ports=' + JSON.stringify(Object.keys(macV10)));
+    const macOfP1 = (p2.rt.arp || {})['192.168.10.1'] ? p2.rt.arp['192.168.10.1'].mac : null;
+    ok(!!macOfP1 && !!(macV10['GE1/0/1'] || {})[macOfP1],
+      'PC1 的 MAC 学到【入端口】GE1/0/1（端口归属正确）',
+      'macP1=' + macOfP1 + ' tbl=' + JSON.stringify(macV10));
+    ok(Object.keys(macV10['GE1/0/2'] || {}).length === 1,
+      'PC2 的 MAC 学到 GE1/0/2（回程方向补全）', JSON.stringify(macV10['GE1/0/2'] || {}));
+
+    /* 3) 纯二层交换机不应产生 ARP 表项（ARP 属三层功能） */
+    ok(Object.keys(sw2.rt.arp || {}).length === 0,
+      '纯二层交换机不产生 ARP 表项', JSON.stringify(Object.keys(sw2.rt.arp || {})));
+    ok(/No ARP entry found/.test(ex9(sw2, ss9, 'display arp')), '二层交换机 display arp 提示无表项');
+
+    /* 4) 三层交换机（配 VLANIF）应产生 ARP，且 VLANIF 状态为 up */
+    E.exec(sw2, ss9, 'system-view');
+    E.exec(sw2, ss9, 'interface Vlan-interface 10');
+    E.exec(sw2, ss9, 'ip address 192.168.10.254 24');
+    E.exec(sw2, ss9, 'return');
+    ok(Sim.l3Up(sw2, 'VLAN10') === true, '三层交换机 VLANIF10 为 up（内部接口名 VLAN<n> 被正确识别）',
+      String(Sim.l3Up(sw2, 'VLAN10')));
+    const pg = Sim.ping(p1, '192.168.10.254', {});
+    ok(pg.ok === true, 'PC1 ping VLANIF10 网关可达', String(pg.ok));
+    ok(Object.keys(sw2.rt.arp || {}).length > 0,
+      '三层交换机（配 VLANIF）产生 ARP 表项', JSON.stringify(Object.keys(sw2.rt.arp || {})));
+
+    /* 5) dir / reset saved-configuration 仅用户视图可执行（与真机一致） */
+    ok(/Directory of flash/.test(ex9(sw2, ss9, 'dir')), '用户视图 dir 可列出 flash 文件');
+    ok(/Configuration file is cleared/.test(ex9(sw2, ss9, 'reset saved-configuration')),
+      '用户视图 reset saved-configuration 可执行');
+    E.exec(sw2, ss9, 'system-view');
+    ok(/Unrecognized command/.test(ex9(sw2, ss9, 'dir')), '系统视图 dir 不可执行（与真机一致）');
+    ok(/Unrecognized command/.test(ex9(sw2, ss9, 'reset saved-configuration')),
+      '系统视图 reset saved-configuration 不可执行（与真机一致）');
+    E.exec(sw2, ss9, 'return');
+  } catch (e9) {
+    ok(false, 'display vlan brief / MAC / ARP 断言', e9.message + '\n' + (e9.stack || '').split('\n')[1]);
+  }
 
   /* ---------------- 汇总 ---------------- */
   console.log('\n================ 汇总 ================');

@@ -11,11 +11,23 @@
     author: '烧坏的内存条',
     contact: 'zyztonorrow@qq.com',
     github: 'https://github.com/reginofchaos/h3c-sim',
-    version: '1.7.3',
+    version: '1.7.4',
     updated: '2026-09-11',
     license: '教学用途 · 自由用于课堂实验',
     // 按日汇总的版本跨度；index 0 为最新版本
     changelog: [
+      {
+        version: '1.7.4',
+        date: '2026-09-11',
+        title: '补齐 display vlan brief，并修正 MAC/ARP 表学习',
+        changes: [
+          '新增 display vlan brief（可缩写为 dis vlan bri）：以 VLAN ID / 名称 / 成员端口三列简要列出全部 VLAN，此前该常用命令在仿真器中缺失',
+          '修正 MAC 地址表学习：源 MAC 改记在帧的【入端口】（此前错记到出端口），并补全回程方向的目的 MAC，现在交换机能学全通信双方的 MAC 且端口归属正确',
+          '修正 ARP 表：纯二层交换机不再产生 ARP 表项（ARP 属三层功能）；仅路由器、PC 及配置了三层接口（如 VLANIF）的交换机才维护 ARP 表',
+          '修复三层交换机 VLANIF 恒为 down 的问题：内部接口名 VLAN<n> 未被识别成三层 VLAN 口，导致网关不通、无法演示三层转发与 ARP',
+          '回归测试 verify.js 达 326 项断言全通过'
+        ]
+      },
       {
         version: '1.7.3',
         date: '2026-09-11',

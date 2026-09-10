@@ -324,6 +324,11 @@
     if (/^Vlan-interface/.test(name)) {
       return { kind: 'vlan', vlan: parseInt(name.replace('Vlan-interface', ''), 10) };
     }
+    /* 内部缩写名 VLAN<n>：cfg.ifaces 中 VLANIF 的存储键形如 'VLAN10'，
+       与用户输入的 'Vlan-interface10' 等价。漏判会导致 VLANIF 被当成物理口 → 恒 down。 */
+    if (/^VLAN\d+$/.test(name)) {
+      return { kind: 'vlan', vlan: parseInt(name.slice(4), 10) };
+    }
     if (/^LoopBack/.test(name)) return { kind: 'loop' };
     if (/^Bridge-Aggregation/.test(name)) return { kind: 'agg', id: name.replace('Bridge-Aggregation', '') };
     if (/^Route-Aggregation/.test(name)) return { kind: 'ragg', id: name.replace('Route-Aggregation', '') };
@@ -1288,33 +1293,69 @@
   }
   Sim.learnNd6 = learnNd6;
 
-  /* ping 后沿路径学习 */
+  /* 设备是否具备三层转发能力：非交换机（路由器/PC）恒为是；
+     交换机仅在存在真正配了 IP 的三层接口（VLANIF/LoopBack/三层口）时为是。
+     注：不能直接用 l3Ifaces(dev).length —— 该函数对未配 IP 的物理口也会计入。 */
+  function hasL3(dev) {
+    if (dev.type !== 'switch') return true;
+    var ls = l3Ifaces(dev);
+    for (var i = 0; i < ls.length; i++) {
+      var f = ls[i].f;
+      if (!f) continue;
+      if (f.ip) return true;
+      if (f.ipSecondary && f.ipSecondary.length) return true;
+    }
+    return false;
+  }
+
+  /* 端口所属 VLAN：access 取 accessVlan（缺省 1），trunk/hybrid 取允许列表首个 */
+  function portVlan(dev, portName) {
+    var f = iface(dev, portName);
+    if (!f) return null;
+    if (f.linkType === 'access') return f.accessVlan != null ? f.accessVlan : 1;
+    return (f.permitVlans || [])[0];
+  }
+
+  /* ping 后沿路径学习
+     原理：源 MAC 在【入端口】学习（帧从哪个口进来就记到哪个口），
+           回程时目的 MAC 则从本跳出端口进来，故同一跳会补学目的 MAC。
+           ARP 只有三层设备（路由器/PC/配了三层接口的交换机）才维护。 */
   function learnFromPath(path, srcDev, srcIp, dstIp) {
     var srcMac = bridgeMac(srcDev);
     var dstOwner = findOwner(dstIp);
     var dstMac = dstOwner ? bridgeMac(dstOwner.dev) : U.genMac(dstIp);
+    var prev = null;
     path.hops.forEach(function (h) {
       var d = h.dev;
+      // 本跳入端口 = 上一跳设备出端口的链路对端
+      var inPort = null;
+      if (prev && prev.dev && prev.outPort) {
+        var pr = S.getPeer(prev.dev.id, prev.outPort);
+        if (pr && pr.dev === d.id) inPort = pr.port;
+      }
       if (d.type === 'switch') {
-        var vlan = null;
+        var vlanOut = null;
         if (h.outIf) {
           var info = l3IfaceInfo(d, h.outIf);
-          if (info.kind === 'vlan') vlan = info.vlan;
+          if (info.kind === 'vlan') vlanOut = info.vlan;
         }
-        if (vlan == null && h.outPort) {
-          var f = iface(d, h.outPort);
-          if (f) vlan = f.linkType === 'access' ? f.accessVlan : (f.permitVlans || [])[0];
-        }
-        if (vlan != null && h.outPort) learnMac(d, vlan, h.outPort, srcMac);
+        if (vlanOut == null && h.outPort) vlanOut = portVlan(d, h.outPort);
+        var vlanIn = inPort ? portVlan(d, inPort) : null;
+        // 去程：源 MAC 自入端口进入 → 记入端口
+        if (vlanIn != null && inPort) learnMac(d, vlanIn, inPort, srcMac);
+        // 回程：目的 MAC 自出端口进入 → 记出端口
+        if (vlanOut != null && h.outPort) learnMac(d, vlanOut, h.outPort, dstMac);
       }
-      // ARP
+      // ARP：仅三层设备维护（纯二层交换机不建 ARP 表）
       if (h.next) {
         var peer = S.getDevice(h.next.id);
-        if (peer) learnArp(d, h.nextIp, bridgeMac(peer), h.outIf || h.outPort, null);
+        if (peer && hasL3(d)) {
+          learnArp(d, h.nextIp, bridgeMac(peer), h.outIf || h.outPort, null);
+        }
       }
+      prev = h;
     });
     if (dstOwner) {
-      var last = path.hops[path.hops.length - 1];
       learnArp(dstOwner.dev, srcIp, srcMac, dstOwner.iface, null);
     }
   }
