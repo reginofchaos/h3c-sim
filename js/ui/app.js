@@ -71,10 +71,48 @@
     });
     $('palette-list').innerHTML = html;
     Array.prototype.forEach.call(document.querySelectorAll('.pal-item'), function (it) {
-      it.addEventListener('dragstart', function (e) { e.dataTransfer.setData('text/model', it.getAttribute('data-model')); e.dataTransfer.effectAllowed = 'copy'; });
-      it.addEventListener('click', function () { addCenter(it.getAttribute('data-model')); });
+      var mid = it.getAttribute('data-model');
+      it.addEventListener('dragstart', function (e) { e.dataTransfer.setData('text/model', mid); e.dataTransfer.effectAllowed = 'copy'; });
+      it.addEventListener('click', function () { addCenter(mid); });
+      // 设备库悬浮详情：鼠标移到某一设备上显示该设备的详细介绍
+      it.addEventListener('mouseenter', function () { showPalTip(mid, it); });
+      it.addEventListener('mouseleave', function () { hidePalTip(); });
     });
   }
+  /* 设备库（调色板）悬浮详情：鼠标移到某一设备上显示该设备的详细介绍 */
+  function showPalTip(mid, el) {
+    var m = H.Model.get(mid); if (!m) return;
+    var typeName = H.Model.typeName(m.type);
+    var colMap = { switch: '#2563eb', router: '#16a34a', firewall: '#dc2626', pc: '#64748b', server: '#a855f7' };
+    var col = colMap[m.type] || '#475569';
+    var abbrMap = { switch: 'SW', router: 'RT', firewall: 'FW', pc: 'PC', server: 'SV' };
+    var abbr = abbrMap[m.type] || '?';
+    var portMap = { FE: 'FE', GE: 'GE', XGE: 'XGE', FGE: 'FGE', Serial: 'Serial' };
+    var portStr = (m.segments || []).map(function (seg) { return seg.n + '×' + (portMap[seg.t] || seg.t); }).join(' + ') || '无';
+    var tip = $('pal-tip');
+    if (!tip) {
+      tip = document.createElement('div');
+      tip.id = 'pal-tip'; tip.className = 'pal-tip'; tip.style.display = 'none';
+      document.body.appendChild(tip);
+    }
+    tip.innerHTML =
+      '<div class="tt-h"><i style="background:' + col + '">' + abbr + '</i>' + esc(m.label) + '</div>' +
+      '<div class="tt-sub">' + esc(m.id) + ' · ' + esc(typeName) + (m.l3 ? ' · 三层' : ' · 二层') + '</div>' +
+      '<div class="tt-desc">' + esc(m.desc) + '</div>' +
+      '<div class="tt-kv"><span>端口</span><b>' + esc(portStr) + '</b></div>' +
+      '<div class="tt-mut">拖拽到画布或单击添加到拓扑</div>';
+    tip.style.display = 'block';
+    var r = el.getBoundingClientRect();
+    var tw = tip.offsetWidth, th = tip.offsetHeight;
+    var x = r.right + 10, y = r.top;
+    if (x + tw > window.innerWidth - 8) x = r.left - tw - 10;   // 右侧无空间则翻到左侧
+    if (x < 8) x = 8;
+    if (y + th > window.innerHeight - 8) y = window.innerHeight - th - 8;
+    if (y < 8) y = 8;
+    tip.style.left = x + 'px';
+    tip.style.top = y + 'px';
+  }
+  function hidePalTip() { var t = $('pal-tip'); if (t) t.style.display = 'none'; }
   /* useColumn=true（默认，点击调色板）：自动左对齐竖列排布；
      useColumn=false（拖拽放置）：落在鼠标指示的位置，不重写坐标 */
   function addDeviceAt(modelId, x, y, useColumn) {
