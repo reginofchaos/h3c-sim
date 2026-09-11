@@ -9,7 +9,7 @@
 
 > 《计算机网络设备配置》课程配套教学工具 —— 纯前端、零依赖的 H3C（Comware）风格交换机 / 路由器仿真终端。
 
-[![当前版本](https://img.shields.io/badge/version-1.7.5-blue)](CHANGELOG.md)
+[![当前版本](https://img.shields.io/badge/version-1.7.6-blue)](CHANGELOG.md)
 [![许可](https://img.shields.io/badge/license-教学用途-green)](LICENSE)
 
 ### 简介
@@ -25,6 +25,7 @@ H3C 网络仿真实验室是一个**纯前端、无构建步骤**的网络设备
 - **拓扑编辑**：拖拽添加设备、端口到端口连线、链路状态指示、设备删除 / 重置。
 - **工程与配置存取**：保存/读取（localStorage）、导出/打开工程文件（`.json`）、导出/导入设备配置（`.cfg`）。
 - **实验场景**：内置多套实验教学场景，含实验目标 / 步骤 / 预期结果。
+- **悬浮交互**：PC / 服务器悬浮窗显示 MAC 地址；端口连线中点空白即取消；设备库悬浮显示设备详细介绍。
 
 ### 快速开始
 
@@ -36,6 +37,7 @@ H3C 网络仿真实验室是一个**纯前端、无构建步骤**的网络设备
 
 | 版本 | 日期 | 要点 |
 | --- | --- | --- |
+| 1.7.6 | 2026-09-11 | 悬浮交互增强：PC 显示 MAC / 点击空白取消连线 / 设备库悬浮详情 |
 | 1.7.5 | 2026-09-11 | PC 状态面板显示 MAC 地址（与转发实际 MAC 一致） |
 | 1.7.4 | 2026-09-11 | 新增 display vlan brief，修正 MAC/ARP 表学习、修复三层交换机 VLANIF 恒 down |
 | 1.7.3 | 2026-09-11 | 拖拽添加设备落在鼠标指示位置（与点击竖列排布区分） |
@@ -69,7 +71,7 @@ H3C 网络仿真实验室是一个**纯前端、无构建步骤**的网络设备
 
 > A teaching tool for the *Computer Network Device Configuration* course — a pure-frontend, zero-dependency H3C (Comware) style switch / router simulation terminal.
 
-[![Version](https://img.shields.io/badge/version-1.7.5-blue)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.7.6-blue)](CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-Educational-green)](LICENSE)
 
 ### Introduction
@@ -86,6 +88,7 @@ H3C Network Simulation Lab is a **pure-frontend, build-free** network device con
 - **Topology editor**: drag-and-drop devices, port-to-port links, link status indicators, device deletion / reset.
 - **Project & config storage**: save/load (localStorage), export/open project files (`.json`), export/import device config (`.cfg`).
 - **Lab scenarios**: several built-in teaching scenarios with objectives / steps / expected results.
+- **Hover interactions**: PC / server hover tip shows the MAC address; clicking blank cancels an in-progress link; palette hover shows device details.
 
 ### Quick Start
 
@@ -97,6 +100,7 @@ Iterative versioning starts at **1.0.0**, summarized per day; rolled-back change
 
 | Version | Date | Highlights |
 | --- | --- | --- |
+| 1.7.6 | 2026-09-11 | Hover UX: PC shows MAC / click blank cancels link / palette shows device details |
 | 1.7.5 | 2026-09-11 | PC status panel shows MAC address (consistent with forwarding MAC) |
 | 1.7.4 | 2026-09-11 | Add `display vlan brief`; fix MAC/ARP table learning; fix L3 switch VLANIF always down |
 | 1.7.3 | 2026-09-11 | Drag-drop device lands at cursor (distinct from click column layout) |
