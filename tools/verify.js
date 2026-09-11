@@ -785,7 +785,7 @@ function run() {
   console.log('\n=== 六、关于面板与版本管理 ===');
   const AB = (window.H3C && window.H3C.ABOUT) || {};
   ok(AB && typeof AB === 'object', 'H.ABOUT 已挂载到 window.H3C');
-  ok(AB.version === '1.7.5', '当前版本号为 1.7.5', 'got ' + AB.version);
+  ok(AB.version === '1.7.6', '当前版本号为 1.7.6', 'got ' + AB.version);
   ok(AB.contact === 'zyztonorrow@qq.com', '联系方式为 zyztonorrow@qq.com');
   ok(/github\.com/.test(AB.github || ''), '包含 GitHub 仓库地址');
   ok(Array.isArray(AB.changelog) && AB.changelog.length >= 5, '更新日志含 >=5 个版本（1.0.0 起）');
@@ -1326,6 +1326,64 @@ function run() {
       'panel=' + panelMac + ' tbl=' + JSON.stringify(swM.rt.mac));
   } catch (e10) {
     ok(false, 'PC 面板 MAC 断言', e10.message + '\n' + (e10.stack || '').split('\n')[1]);
+  }
+
+  /* ---------------- 十四、悬浮交互增强（1.7.6）---------------- */
+  console.log('\n=== 十四、悬浮交互增强（1.7.6）===');
+  try {
+    const Ub = H.U;
+    const topo = H.UI.Topology;
+    const svg = doc.getElementById('topo');
+
+    // === Feature 1：PC / 服务器悬浮窗显示 MAC（与面板、转发同源 = Sim.bridgeMac）===
+    S.clearAll(); topo.render();
+    const swX = S.addDevice('S5130-28S-EI', 'SWX', 200, 200);
+    const pcX = S.addDevice('PC', 'PCX', 100, 400);
+    topo.render();
+    const pcTip = topo.devTipHtml(pcX.id);
+    ok(/<span>MAC<\/span>/.test(pcTip), 'PC 悬浮窗(devTipHtml)含 MAC 行');
+    const pcBridge = Ub.macFmt(Sim.bridgeMac(pcX));
+    ok(pcTip.indexOf(pcBridge) >= 0,
+      'PC 悬浮窗 MAC 与 Sim.bridgeMac(PC) 一致（与转发实际 MAC 同源）',
+      'tipHas=' + (pcTip.indexOf(pcBridge) >= 0) + ' bridge=' + pcBridge);
+
+    // === Feature 2：端口连线时点击空白区域取消连线 ===
+    S.clearAll(); topo.render();
+    const k1 = S.addDevice('S5130-28S-EI', 'K1', 200, 200);
+    const k2 = S.addDevice('S5130-28S-EI', 'K2', 520, 200);
+    S.addLink(k1.id, 'GE1/0/1', k2.id, 'GE1/0/1');
+    topo.render();
+    const linksBefore = H.State.S.links.length;
+    // 起点：点击 K1 的端口圆点，建立 pendingPort
+    const nodeK1 = doc.querySelector('.node[data-id="' + k1.id + '"]');
+    const dotK1 = nodeK1 ? nodeK1.querySelector('.port-dot') : null;
+    let pendingStarted = false;
+    if (dotK1 && svg) {
+      dotK1.dispatchEvent(new window.MouseEvent('click', { bubbles: true, cancelable: true }));
+      const banner = doc.getElementById('linking-banner');
+      pendingStarted = !!banner && banner.style.display === 'block';
+    }
+    // 终点：点击画布空白区域，应取消本次连线
+    if (svg) svg.dispatchEvent(new window.MouseEvent('click', { bubbles: true, cancelable: true }));
+    const bannerAfter = doc.getElementById('linking-banner');
+    ok(pendingStarted && !!bannerAfter && bannerAfter.style.display === 'none',
+      '端口连线进行中点击空白区域 → 取消连线（提示横幅隐藏）', 'pendingStarted=' + pendingStarted);
+    ok(pendingStarted && H.State.S.links.length === linksBefore,
+      '端口连线进行中点击空白区域 → 未新增链路（确认为取消而非连接）',
+      'before=' + linksBefore + ' after=' + H.State.S.links.length);
+
+    // === Feature 3：设备库悬浮显示设备详细介绍 ===
+    const palItem = doc.querySelector('.pal-item');
+    const pmid = palItem ? palItem.getAttribute('data-model') : null;
+    const pmodel = pmid ? H.Model.get(pmid) : null;
+    if (palItem) palItem.dispatchEvent(new window.MouseEvent('mouseenter', { bubbles: false }));
+    const palTip = doc.getElementById('pal-tip');
+    ok(!!palItem && !!palTip && palTip.style.display === 'block', '设备库项悬浮后 pal-tip 显示');
+    ok(!!palItem && !!palTip && /tt-desc/.test(palTip.innerHTML) &&
+      palTip.innerHTML.indexOf((pmodel && pmodel.label) || '') >= 0 && /[×x]/.test(palTip.innerHTML),
+      'pal-tip 含设备型号 + 详细介绍 + 端口规格', 'hasTip=' + (!!palTip) + ' mid=' + pmid);
+  } catch (e14) {
+    ok(false, '悬浮交互增强（1.7.6）断言', e14.message + ' | ' + ((e14.stack || '').split('\n')[1] || ''));
   }
 
   /* ---------------- 汇总 ---------------- */
