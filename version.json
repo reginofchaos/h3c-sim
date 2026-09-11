@@ -4,10 +4,21 @@
   "author": "烧坏的内存条",
   "contact": "zyztonorrow@qq.com",
   "github": "https://github.com/reginofchaos/h3c-sim",
-  "version": "1.7.5",
+  "version": "1.7.6",
   "updated": "2026-09-11",
   "license": "教学用途 · 自由用于课堂实验",
   "changelog": [
+    {
+      "version": "1.7.6",
+      "date": "2026-09-11",
+      "title": "悬浮交互增强：PC 显示 MAC / 点击空白取消连线 / 设备库悬浮详情",
+      "changes": [
+        "PC / 服务器悬浮窗口（鼠标移到设备上）新增显示本机 MAC 地址，与面板、转发实际使用的 MAC 同源（Sim.bridgeMac）",
+        "端口连线时点击画布空白区域即可取消本次连线（清除跟随虚线与提示横幅），与 Esc 取消行为一致，避免误点后连线状态卡住",
+        "设备库（左侧调色板）新增鼠标悬浮详情：移到任一设备项上显示该设备的类型、型号、详细介绍与端口规格，便于学生认设备",
+        "回归测试 verify.js 达 338 项断言全通过"
+      ]
+    },
     {
       "version": "1.7.5",
       "date": "2026-09-11",
