@@ -405,7 +405,8 @@
     var cls = e.target.getAttribute ? (e.target.getAttribute('class') || '') : '';
     if (cls.indexOf('port-dot') >= 0) { onPortDotClick(e); return; }
     if (e.target.closest && e.target.closest('.node')) return; // 由 mousedown/up 处理
-    // 点击空白：取消选中
+    // 点击空白区域：若正在端口连线，则取消连线；否则取消选中
+    if (pendingPort) { pendingPort = null; clearGhost(); hidePortHint(); render(); return; }
     if (sel || selLink) { sel = null; selLink = null; hideLinkPop(); render(); }
   }
 
@@ -522,6 +523,10 @@
     h += '<div class="tt-kv"><span>端口</span><b>' + d.ports.length + ' 个（UP ' + upN + '）</b></div>';
     h += '<div class="tt-kv"><span>链路</span><b>' + ls.length + ' 条</b></div>';
     h += '<div class="tt-kv"><span>VLAN</span><b>' + (vlanN ? vlanN + ' 个' : '未配置') + '</b></div>';
+    // PC / 服务器悬浮窗口显示 MAC 地址（与面板、转发实际使用的 MAC 同源 = Sim.bridgeMac）
+    if ((d.type === 'pc' || d.type === 'server') && H.Sim && H.Sim.bridgeMac) {
+      h += '<div class="tt-kv"><span>MAC</span><b>' + esc(U.macFmt(H.Sim.bridgeMac(d))) + '</b></div>';
+    }
     if (ips.length) h += '<div class="tt-ips">' + ips.map(function (s) { return '<div>' + esc(s) + '</div>'; }).join('') + '</div>';
     else h += '<div class="tt-mut">尚未配置 IP 地址</div>';
     h += '<div class="tt-mut">点击选中 · 拖拽移动 · 点端口圆点连线</div>';
@@ -725,6 +730,7 @@
     getSelected: function () { return sel; }, onSelect: null, onLinkMode: null,
     findFreeSpot: findFreeSpot, placeNewDevice: placeNewDevice, resetColumn: resetColumn,
     ensureVisible: ensureVisible,
-    nodeWidth: nodeWidth, nodeHeight: nodeH, getView: function () { return view; }
+    nodeWidth: nodeWidth, nodeHeight: nodeH, getView: function () { return view; },
+    devTipHtml: devTipHtml
   };
 })(window.H3C);
