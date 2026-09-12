@@ -8,61 +8,85 @@
     {
       id: 'S6850-56HF', type: 'switch', l3: true, level: 'core', label: '数据中心核心交换机',
       desc: '48×GE + 8×10G/40G 三层交换机（Comware V7）',
+      intro: '定位于数据中心与园区网核心层的高密度三层交换机，提供丰富万兆与四十吉上行及全线速转发能力。',
+      usage: ['大型园区网或数据中心核心层组网', '服务器区与集群上行汇聚', 'OSPF、BGP 等路由协议与策略路由实验', 'VLAN、MSTP、链路聚合等二层高级特性演示'],
       segments: [{ t: 'GE', n: 48, base: '1/0/', start: 1 }, { t: 'XGE', n: 8, base: '1/0/', start: 49 }]
     },
     {
       id: 'S5560X-54C-EI', type: 'switch', l3: true, level: 'agg', label: '汇聚三层交换机',
       desc: '48×GE + 4×10G + 2×40G 三层交换机',
+      intro: '面向汇聚层的盒式三层交换机，兼具高密度千兆接入与万兆/四十吉上行，性价比高。',
+      usage: ['园区网汇聚层（接入交换机上行收敛）', '三层网关与用户网关部署', 'OSPF 单区域或多区域组网', 'MSTP 与 VRRP 冗余网关实验'],
       segments: [{ t: 'GE', n: 48, base: '1/0/', start: 1 }, { t: 'XGE', n: 4, base: '1/0/', start: 49 }, { t: 'FGE', n: 2, base: '1/0/', start: 53 }]
     },
     {
       id: 'S5130-28S-EI', type: 'switch', l3: true, level: 'access', label: '接入三层交换机',
       desc: '24×GE + 4×10G 光口接入交换机',
+      intro: '支持三层路由的接入交换机，适合需要在接入层做子网划分与轻量路由的场合。',
+      usage: ['接入层设备接入与子网划分', '小型网络三层直连与静态路由', 'VLAN、Trunk、端口安全基础实验', '接入层 DHCP、ACL 演示'],
       segments: [{ t: 'GE', n: 24, base: '1/0/', start: 1 }, { t: 'XGE', n: 4, base: '1/0/', start: 25 }]
     },
     {
       id: 'S5110-52P', type: 'switch', l3: false, level: 'access', label: '二层接入交换机',
       desc: '48×GE + 4×10G 二层交换机（POE）',
+      intro: '纯二层接入交换机，支持 PoE 供电，适合终端密集且无需三层路由的接入场景。',
+      usage: ['办公或教室终端接入', 'AP、IP 电话、摄像头等 PoE 受电设备供电', 'VLAN、端口隔离、风暴抑制等二层实验', '接入层链路聚合上联'],
       segments: [{ t: 'GE', n: 48, base: '1/0/', start: 1 }, { t: 'XGE', n: 4, base: '1/0/', start: 49 }]
     },
     {
       id: 'S5820', type: 'switch', l3: true, level: 'agg', label: '10G 汇聚接入交换机',
       desc: '48×10GE(SFP+) + 4×40G(QSFP+) 三层交换机',
+      intro: '全线速万兆的三层交换机，面向高带宽汇聚与数据中心柜顶（ToR）部署。',
+      usage: ['万兆汇聚或数据中心 ToR 接入', '高性能服务器区上行', 'OSPF、IS-IS 等路由实验', 'MSTP、聚合、QoS 演示'],
       segments: [{ t: 'XGE', n: 48, base: '1/0/', start: 1 }, { t: 'FGE', n: 4, base: '1/0/', start: 49 }]
     },
     {
       id: 'S3110-26TP', type: 'switch', l3: false, level: 'access', label: '二层百兆交换机',
       desc: '24×FE + 2×GE 二层交换机',
+      intro: '入门级二层百兆交换机，端口成本极低，适合教学演示与轻量接入。',
+      usage: ['教学实验基础二层交换机', '百兆终端或老式设备接入', 'VLAN、Trunk、端口镜像基础实验', '低成本接入层搭建'],
       segments: [{ t: 'FE', n: 24, base: '1/0/', start: 1 }, { t: 'GE', n: 2, base: '1/0/', start: 25 }]
     },
     {
       id: 'MSR36-20', type: 'router', l3: true, level: 'router', label: '多业务路由器',
       desc: '3×GE 三层口 + 2×Serial 广域网路由器',
+      intro: '支持以太网与 Serial 广域网接口的多业务路由器，适合广域网互联与综合路由实验。',
+      usage: ['分支机构广域网互联（PPP/HDLC 串口）', 'OSPF、BGP、RIP 等路由协议实验', 'NAT、策略路由、ACL 演示', 'GRE、IPSec VPN 入门'],
       segments: [{ t: 'GE', n: 3, base: '0/', start: 0 }, { t: 'Serial', n: 2, base: '1/', start: 0 }]
     },
     {
       id: 'MSR26-10', type: 'router', l3: true, level: 'router', label: '中小企业路由器',
       desc: '2×GE + 1×Serial 路由器',
+      intro: '面向中小企业的多业务路由器，接口精简、部署简单，适合基础出口与教学。',
+      usage: ['中小企业或校园网出口', 'PPPoE、NAT 上网实验', '静态路由、单区域 OSPF', 'Serial 广域网链路基础'],
       segments: [{ t: 'GE', n: 2, base: '0/', start: 0 }, { t: 'Serial', n: 1, base: '1/', start: 0 }]
     },
     {
       id: 'SR6608', type: 'router', l3: true, level: 'router', label: '高端核心路由器',
       desc: '8×GE 高性能路由器',
+      intro: '高性能核心路由器，提供高密度吉比特接口，适合核心路由与大量路由表场景。',
+      usage: ['园区网或企业网核心路由', '大规模 OSPF、BGP 路由域', '路由重分布、策略路由', '核心层与交换机互联'],
       segments: [{ t: 'GE', n: 8, base: '0/', start: 0 }]
     },
     {
       id: 'SecPath F100-C-G5', type: 'firewall', l3: true, level: 'fw', label: '下一代防火墙',
       desc: '8×GE 安全网关',
+      intro: '集成 ACL、NAT、VPN 与安全防护的下一代防火墙，定位于网络边界安全。',
+      usage: ['网络边界安全隔离', 'NAT 出口与地址转换', '安全策略、域间访问控制', 'IPSec 或 GRE VPN 隧道'],
       segments: [{ t: 'GE', n: 8, base: '1/0/', start: 1 }]
     },
     {
       id: 'PC', type: 'pc', l3: false, level: 'host', label: 'PC 终端',
       desc: '单网卡终端，支持 ip 配置与 ping 测试',
+      intro: '终端主机，用于模拟用户侧设备，支持 IP 配置与连通性测试。',
+      usage: ['作为 ping 或 tracert 的源与目的', '验证 VLAN、路由连通性', '运行 ipconfig、arp -a 查看本机配置', 'DHCP 客户端或终端接入'],
       segments: [{ t: 'GE', n: 1, base: '0/', start: 1 }]
     },
     {
       id: 'Server', type: 'server', l3: false, level: 'host', label: '服务器',
       desc: '单网卡服务器，支持 ip 配置与 ping 测试',
+      intro: '服务器主机，用于模拟提供服务的服务端设备，支持 IP 配置与连通性测试。',
+      usage: ['作为业务服务器或通信对端', '验证端到端三层连通性', '与 PC 组合搭建客户端-服务器拓扑', 'DHCP、DNS 等服务端角色演示'],
       segments: [{ t: 'GE', n: 1, base: '0/', start: 1 }]
     }
   ];
