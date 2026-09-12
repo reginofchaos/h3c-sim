@@ -183,9 +183,9 @@ body {
 
 /* 设备节点 */
 .node { cursor: pointer; }
-.node .body { transition: stroke .15s, filter .15s; }
+.node .body { transition: stroke .15s, filter .15s, fill .15s; }
 .node:hover .body { filter: brightness(1.12); }
-.node.selected .body { stroke: var(--accent2); stroke-width: 2.5; }
+.node.selected .body { stroke: var(--accent2); stroke-width: 3.5; fill: rgba(56, 189, 248, 0.30); filter: drop-shadow(0 0 8px rgba(56, 189, 248, 0.95)); }
 .node .dev-label { fill: #fff; font-size: 12px; font-weight: 700; pointer-events: none; }
 .node .dev-model { fill: #cbd5e1; font-size: 9.5px; pointer-events: none; }
 .node .port-dot { cursor: pointer; }
@@ -239,7 +239,7 @@ body {
 /* ===== 设备库（调色板）悬浮详情小窗 ===== */
 .pal-tip {
   position: fixed; z-index: 80; pointer-events: none; display: none;
-  min-width: 200px; max-width: 300px;
+  min-width: 200px; max-width: 320px;
   background: rgba(15, 21, 31, .97); border: 1px solid var(--accent);
   border-radius: 9px; padding: 8px 10px; font-size: 12px; color: #d7e0ec;
   box-shadow: 0 10px 26px rgba(0, 0, 0, .55);
@@ -255,6 +255,11 @@ body {
 .pal-tip .tt-kv span { color: var(--muted); flex: none; }
 .pal-tip .tt-kv b { color: #e6edf6; font-family: "Consolas", monospace; font-weight: 600; text-align: right; word-break: break-all; }
 .pal-tip .tt-mut { margin-top: 5px; color: var(--muted); font-size: 11px; line-height: 1.5; }
+  .pal-tip .tt-intro { font-size: 11.5px; color: #d6dde6; line-height: 1.55; margin-bottom: 6px; }
+  .pal-tip .tt-use { margin-bottom: 6px; }
+  .pal-tip .tt-use-h { color: var(--accent2); font-size: 11px; font-weight: 700; margin-bottom: 3px; }
+  .pal-tip .tt-use ul { margin: 0; padding-left: 16px; }
+  .pal-tip .tt-use li { font-size: 11px; color: #cbd5e1; line-height: 1.65; margin-bottom: 1px; }
 
 /* ===== 终端 IP 配置（端口详情内） ===== */
 .host-row {
