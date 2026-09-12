@@ -95,10 +95,18 @@
       tip.id = 'pal-tip'; tip.className = 'pal-tip'; tip.style.display = 'none';
       document.body.appendChild(tip);
     }
+    var introHtml = m.intro ? '<div class="tt-intro">' + esc(m.intro) + '</div>' : '';
+    var useHtml = '';
+    if (m.usage && m.usage.length) {
+      useHtml = '<div class="tt-use"><div class="tt-use-h">常用使用场景</div><ul>' +
+        m.usage.map(function (u) { return '<li>' + esc(u) + '</li>'; }).join('') + '</ul></div>';
+    }
     tip.innerHTML =
       '<div class="tt-h"><i style="background:' + col + '">' + abbr + '</i>' + esc(m.label) + '</div>' +
       '<div class="tt-sub">' + esc(m.id) + ' · ' + esc(typeName) + (m.l3 ? ' · 三层' : ' · 二层') + '</div>' +
+      introHtml +
       '<div class="tt-desc">' + esc(m.desc) + '</div>' +
+      useHtml +
       '<div class="tt-kv"><span>端口</span><b>' + esc(portStr) + '</b></div>' +
       '<div class="tt-mut">拖拽到画布或单击添加到拓扑</div>';
     tip.style.display = 'block';
