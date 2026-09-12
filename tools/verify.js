@@ -785,7 +785,7 @@ function run() {
   console.log('\n=== 六、关于面板与版本管理 ===');
   const AB = (window.H3C && window.H3C.ABOUT) || {};
   ok(AB && typeof AB === 'object', 'H.ABOUT 已挂载到 window.H3C');
-  ok(AB.version === '1.7.6', '当前版本号为 1.7.6', 'got ' + AB.version);
+  ok(AB.version === '1.7.7', '当前版本号为 1.7.7', 'got ' + AB.version);
   ok(AB.contact === 'zyztonorrow@qq.com', '联系方式为 zyztonorrow@qq.com');
   ok(/github\.com/.test(AB.github || ''), '包含 GitHub 仓库地址');
   ok(Array.isArray(AB.changelog) && AB.changelog.length >= 5, '更新日志含 >=5 个版本（1.0.0 起）');
@@ -1382,6 +1382,13 @@ function run() {
     ok(!!palItem && !!palTip && /tt-desc/.test(palTip.innerHTML) &&
       palTip.innerHTML.indexOf((pmodel && pmodel.label) || '') >= 0 && /[×x]/.test(palTip.innerHTML),
       'pal-tip 含设备型号 + 详细介绍 + 端口规格', 'hasTip=' + (!!palTip) + ' mid=' + pmid);
+    // 设备库悬浮窗应含「简介」与「常用使用场景」
+    const hasIntro = !!palTip && /tt-intro/.test(palTip.innerHTML) &&
+      (pmodel && pmodel.intro ? palTip.innerHTML.indexOf(pmodel.intro) >= 0 : false);
+    ok(hasIntro, 'pal-tip 含设备简介（intro）', 'mid=' + pmid);
+    const hasUse = !!palTip && /tt-use/.test(palTip.innerHTML) &&
+      (pmodel && pmodel.usage && pmodel.usage.length ? palTip.innerHTML.indexOf(pmodel.usage[0]) >= 0 : false);
+    ok(hasUse, 'pal-tip 含常用使用场景（usage）', 'mid=' + pmid);
   } catch (e14) {
     ok(false, '悬浮交互增强（1.7.6）断言', e14.message + ' | ' + ((e14.stack || '').split('\n')[1] || ''));
   }
