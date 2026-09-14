@@ -175,9 +175,9 @@ function run() {
 
   const cases = [
     { idx: 0, name: 'VLAN 划分与 trunk 实验', src: 'PC1', dst: '192.168.10.20' },
-    { idx: 1, name: '静态路由互连实验', src: 'PC1', dst: '10.2.2.10' },
-    { idx: 2, name: 'OSPF 动态路由实验', src: 'PC1', dst: '10.0.23.3' },
-    { idx: 3, name: 'RSTP 冗余与阻塞实验', src: 'PC1', dst: '172.16.0.20' }
+    { idx: 3, name: '静态路由互连实验', src: 'PC1', dst: '10.2.2.10' },
+    { idx: 4, name: 'OSPF 动态路由实验', src: 'PC1', dst: '10.0.23.3' },
+    { idx: 5, name: 'RSTP 冗余与阻塞实验', src: 'PC1', dst: '172.16.0.20' }
   ];
 
   cases.forEach(function (c, i) {
@@ -359,7 +359,7 @@ function run() {
   /* ---------------- 四·E、广域网 PPP/HDLC 接入（PPP/HDLC/CHAP 状态机） ---------------- */
   console.log('\n=== 四·E、广域网 PPP/HDLC 接入（PPP/HDLC/CHAP 状态机）===');
   // 加载「广域网 PPP/HDLC 接入实验」场景（索引 4）
-  loadScenarioByUI(4);
+  loadScenarioByUI(6);
   const wanR1 = devByName('R1'), wanR2 = devByName('R2'),
         wanPC1 = devByName('PC1'), wanPC2 = devByName('PC2');
   ok(!!wanR1 && !!wanR2 && !!wanPC1 && !!wanPC2, 'WAN 场景含 R1/R2/PC1/PC2 四台设备');
@@ -419,7 +419,7 @@ function run() {
 
   /* ---------------- 四·F、NAT 地址转换（Easy-IP 真实转发） ---------------- */
   console.log('\n=== 四·F、NAT 地址转换（Easy-IP 真实转发）===');
-  loadScenarioByUI(5);
+  loadScenarioByUI(7);
   const natR1 = devByName('R1'), natR2 = devByName('R2'),
         natPC1 = devByName('PC1'), natPC2 = devByName('PC2');
   ok(!!natR1 && !!natR2 && !!natPC1 && !!natPC2, 'NAT 场景含 R1/R2/PC1/PC2 四台设备');
@@ -499,7 +499,7 @@ function run() {
 
   /* ---------------- 四·G、IS-IS 路由 + Route-Policy 真实生效 ---------------- */
   console.log('\n=== 四·G、IS-IS 路由 + Route-Policy 真实生效 ===');
-  loadScenarioByUI(6);
+  loadScenarioByUI(8);
   const isR1 = devByName('R1'), isR2 = devByName('R2'),
         isPC1 = devByName('PC1'), isPC2 = devByName('PC2');
   ok(!!isR1 && !!isR2 && !!isPC1 && !!isPC2, 'IS-IS 场景含 R1/R2/PC1/PC2 四台设备');
@@ -570,7 +570,7 @@ function run() {
 
   /* ---------------- 四·H、VRRP 网关冗余（主备选举 + 虚拟网关 + 故障切换） ---------------- */
   console.log('\n=== 四·H、VRRP 网关冗余（主备选举 + 虚拟网关 + 故障切换）===');
-  loadScenarioByUI(7);
+  loadScenarioByUI(9);
   const vrR1 = devByName('R1'), vrR2 = devByName('R2'),
         vrSW = devByName('SW'), vrPC1 = devByName('PC1');
   ok(!!vrR1 && !!vrR2 && !!vrSW && !!vrPC1, 'VRRP 场景含 R1/R2/SW/PC1 四台设备');
@@ -627,7 +627,7 @@ function run() {
 
   /* ---------------- 四·J、IPv6 双栈端到端转发 + ping6 ---------------- */
   console.log('\n=== 四·J、IPv6 双栈端到端转发 + ping6 ===');
-  loadScenarioByUI(8);
+  loadScenarioByUI(10);
   const v6R1 = devByName('R1'), v6R2 = devByName('R2'),
         v6PC1 = devByName('PC1'), v6PC2 = devByName('PC2');
   ok(!!v6R1 && !!v6R2 && !!v6PC1 && !!v6PC2, 'IPv6 场景含 R1/R2/PC1/PC2 四台设备');
@@ -734,7 +734,7 @@ function run() {
 
   /* ---------------- 四·L、VLAN 跨网段访问（三层交换 / VLANIF 网关） ---------------- */
   console.log('\n=== 四·L、VLAN 跨网段访问（三层交换 / VLANIF 网关）===');
-  loadScenarioByUI(9);
+  loadScenarioByUI(1);
   const vlCORE = devByName('CORE'), vlPC1 = devByName('PC1'),
         vlPC2 = devByName('PC2'), vlPC3 = devByName('PC3');
   ok(!!vlCORE && !!vlPC1 && !!vlPC2 && !!vlPC3, 'VLAN 跨网段场景含 CORE/PC1/PC2/PC3 四台设备');
@@ -806,11 +806,75 @@ function run() {
     ok(!vlBack2.err && /Reply from 192\.168\.20\.10/.test(vlBack2.out), '恢复 VLANIF20 网关地址后 PC1 重新 ping 通');
   }
 
+  /* ---------------- 四·M、VLAN 跨交换机跨网段访问（核心三层 + 接入二层，trunk 上联；1.7.9 新增） ---------------- */
+  console.log('\n=== 四·M、VLAN 跨交换机跨网段访问（核心三层 + 接入二层）===');
+  loadScenarioByUI(2);
+  const xCORE = devByName('CORE'), xACC1 = devByName('ACC1'), xACC2 = devByName('ACC2');
+  const xPC1 = devByName('PC1'), xPC2 = devByName('PC2'), xPC3 = devByName('PC3');
+  ok(!!xCORE && !!xACC1 && !!xACC2 && !!xPC1 && !!xPC2 && !!xPC3,
+    '跨交换机场景含 CORE / ACC1 / ACC2 / PC1 / PC2 / PC3 六台设备');
+  ok(S.S.links.length === 5, '跨交换机场景含 5 条链路（2 条 trunk 上联 + 3 条 PC 接入）', 'links=' + S.S.links.length);
+
+  if (xCORE && xACC1 && xACC2 && xPC1 && xPC2 && xPC3) {
+    const xCoreSess = S.getSession(xCORE.id), xPc1Sess = S.getSession(xPC1.id),
+          xPc2Sess = S.getSession(xPC2.id);
+    Sim.invalidate();
+
+    // 1) 网关只在核心：两个 VLANIF 均 up；两台接入交换机是纯二层（没有任何三层地址）
+    ok(Sim.l3Up(xCORE, 'VLAN10') && Sim.l3Up(xCORE, 'VLAN20'), 'CORE 的两个 VLANIF 网关均为 up');
+    ok(Sim.hasL3Addr(xACC1) === false && Sim.hasL3Addr(xACC2) === false,
+      'ACC1 / ACC2 为纯二层交换机（不存在任何三层接口）');
+
+    // 2) trunk 上联口全部转发（回归 1.7.9 修复的 STP 根端口登记错位 bug）
+    ok(Sim.portUp(xCORE, 'GE1/0/1') && Sim.portUp(xCORE, 'GE1/0/2'),
+      'CORE 的两个上联 trunk 口均为 up（未被 STP 误阻塞）');
+    ok(Sim.portUp(xACC1, 'GE1/0/24') && Sim.portUp(xACC2, 'GE1/0/24'),
+      'ACC1 / ACC2 的上行 trunk 口均为 up');
+    ok(Sim.portHasVlan(xCORE, 'GE1/0/1', 20) && Sim.portHasVlan(xACC1, 'GE1/0/24', 10),
+      'trunk 口同时承载 VLAN 10 与 VLAN 20');
+
+    // 3) 跨交换机 + 跨网段：PC1(VLAN10 / ACC1) → PC2(VLAN20 / ACC2)
+    const xCross = E.exec(xPC1, xPc1Sess, 'ping 192.168.20.10');
+    ok(!xCross.err && /Reply from 192\.168\.20\.10/.test(xCross.out),
+      'PC1 跨交换机跨网段 ping 通 PC2 192.168.20.10（ACC1 trunk → CORE 网关 → ACC2）');
+
+    // 4) 反向也要通
+    const xBack = E.exec(xPC2, xPc2Sess, 'ping 192.168.10.10');
+    ok(!xBack.err && /Reply from 192\.168\.10\.10/.test(xBack.out), 'PC2 反向 ping 通 PC1 192.168.10.10');
+
+    // 5) 对照组：同 VLAN 但接在另一台接入交换机上（PC1 → PC3），走二层 trunk 直达
+    const xSame = E.exec(xPC1, xPc1Sess, 'ping 192.168.10.20');
+    ok(!xSame.err && /Reply from 192\.168\.10\.20/.test(xSame.out),
+      '同 VLAN 的 PC1 ping 通 PC3 192.168.10.20（跨交换机二层直达）');
+
+    // 6) tracert：跨网段首跳为网关；同 VLAN 只有一跳且不出现网关
+    const xTr = E.exec(xPC1, xPc1Sess, 'tracert 192.168.20.10');
+    ok(!xTr.err && /^1\s+192\.168\.10\.1/m.test(xTr.out), '跨网段 tracert 第一跳是网关 192.168.10.1');
+    ok(!xTr.err && /^2\s+192\.168\.20\.10/m.test(xTr.out), '跨网段 tracert 第二跳是目的 192.168.20.10');
+    const xTrSame = E.exec(xPC1, xPc1Sess, 'tracert 192.168.10.20');
+    ok(!xTrSame.err && !/192\.168\.10\.1/.test(xTrSame.out),
+      '同 VLAN tracert 不出现网关（二层直达，不经三层转发）');
+
+    // 7) CORE 的 ARP 表跨 VLAN 学到两侧主机
+    ok(!!(xCORE.rt.arp && xCORE.rt.arp['192.168.10.10']), 'CORE ARP 学到 VLAN10 侧主机 192.168.10.10');
+    ok(!!(xCORE.rt.arp && xCORE.rt.arp['192.168.20.10']), 'CORE ARP 学到 VLAN20 侧主机 192.168.20.10');
+
+    // 8) 教学验证：把 CORE 的上联口从 trunk 改回 access → VLAN 延伸不到网关
+    E.exec(xCORE, xCoreSess, 'system-view');
+    E.exec(xCORE, xCoreSess, 'interface GigabitEthernet1/0/1');
+    E.exec(xCORE, xCoreSess, 'port link-type access');
+    E.exec(xCORE, xCoreSess, 'return');
+    Sim.invalidate();
+    const xNoTrunk = E.exec(xPC1, xPc1Sess, 'ping 192.168.20.10');
+    ok(!/Reply from 192\.168\.20\.10/.test(xNoTrunk.out || ''),
+      'CORE 上联口改回 access 后 PC1 无法访问 192.168.20.10（trunk 断开，VLAN 到不了网关）');
+  }
+
   /* ---------------- 四·K、ping/tracert 命令模式去歧义（BUG：IPv4 地址同时匹配 <ip> 与 <word>） ---------------- */
   console.log('\n=== 四·K、ping / tracert 命令去歧义 ===');
   // 本小节需要一台"已配置 IP"的设备做源地址（无 IP 的设备 ping 会返回"The source address does not exist."，
   // 拿不到 Ping 头）。原先沿用上一段遗留拓扑，一旦前序场景换了型号或缺 IP 就会失败 —— 改为显式加载。
-  loadScenarioByUI(8);   // IPv6 场景含 MSR36-20 路由器，接口已配置 IPv4/IPv6
+  loadScenarioByUI(10);   // IPv6 场景含 MSR36-20 路由器，接口已配置 IPv4/IPv6
   // 在 system 视图对任意设备执行 ping 命令，不应报歧义错误
   var firstSw = null;
   S.S.devices.forEach(function (d) {
@@ -862,7 +926,7 @@ function run() {
   console.log('\n=== 六、关于面板与版本管理 ===');
   const AB = (window.H3C && window.H3C.ABOUT) || {};
   ok(AB && typeof AB === 'object', 'H.ABOUT 已挂载到 window.H3C');
-  ok(AB.version === '1.7.8', '当前版本号为 1.7.8', 'got ' + AB.version);
+  ok(AB.version === '1.7.9', '当前版本号为 1.7.9', 'got ' + AB.version);
   ok(AB.contact === 'zyztonorrow@qq.com', '联系方式为 zyztonorrow@qq.com');
   ok(/github\.com/.test(AB.github || ''), '包含 GitHub 仓库地址');
   ok(Array.isArray(AB.changelog) && AB.changelog.length >= 5, '更新日志含 >=5 个版本（1.0.0 起）');
