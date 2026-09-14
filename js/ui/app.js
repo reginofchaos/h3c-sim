@@ -358,6 +358,121 @@
       ]
     },
     {
+      id: 1,
+      name: 'VLAN 跨网段访问（三层交换）实验',
+      devices: [
+        { model: 'S5560X-54C-EI', name: 'CORE', x: 250, y: 60 },
+        { model: 'PC', name: 'PC1', x: 60, y: 320 },
+        { model: 'PC', name: 'PC2', x: 250, y: 500 },
+        { model: 'PC', name: 'PC3', x: 460, y: 320 }
+      ],
+      links: [
+        ['PC1', 'GE0/1', 'CORE', 'GE1/0/1'],
+        ['PC2', 'GE0/1', 'CORE', 'GE1/0/2'],
+        ['PC3', 'GE0/1', 'CORE', 'GE1/0/3']
+      ],
+      config: [
+        { dev: 'PC1', cmds: ['set ip 192.168.10.10 255.255.255.0 192.168.10.1'] },
+        { dev: 'PC2', cmds: ['set ip 192.168.20.10 255.255.255.0 192.168.20.1'] },
+        { dev: 'PC3', cmds: ['set ip 192.168.20.20 255.255.255.0 192.168.20.1'] },
+        { dev: 'CORE', cmds: ['sysname CORE', 'system-view',
+          'vlan 10', 'port GigabitEthernet1/0/1', 'quit',
+          'vlan 20', 'port GigabitEthernet1/0/2', 'port GigabitEthernet1/0/3', 'quit',
+          'interface GigabitEthernet1/0/1', 'port link-type access', 'port access vlan 10', 'quit',
+          'interface GigabitEthernet1/0/2', 'port link-type access', 'port access vlan 20', 'quit',
+          'interface GigabitEthernet1/0/3', 'port link-type access', 'port access vlan 20', 'quit',
+          'interface Vlan-interface 10', 'ip address 192.168.10.1 255.255.255.0', 'quit',
+          'interface Vlan-interface 20', 'ip address 192.168.20.1 255.255.255.0', 'return'] }
+      ],
+      goal: [
+        '理解不同 VLAN 本质上是不同网段：二层互相隔离，必须依靠三层接口（VLANIF）做网关才能互访',
+        '掌握在三层交换机上创建 Vlan-interface 并配置网关地址的方法',
+        '体会「跨网段先看网关」：主机先把报文交给网关，由网关查路由表再转发到另一个 VLAN'
+      ],
+      steps: [
+        '观察拓扑：PC1 属于 VLAN 10，PC2 与 PC3 同属 VLAN 20，三台 PC 都直接接入三层交换机 CORE',
+        '在 CORE 上创建 VLAN 10 与 VLAN 20，并把 GE1/0/1 划入 VLAN 10，GE1/0/2、GE1/0/3 划入 VLAN 20（access 口）',
+        '创建 interface Vlan-interface 10，配置网关地址 192.168.10.1/24',
+        '创建 interface Vlan-interface 20，配置网关地址 192.168.20.1/24',
+        '把 PC1 的网关指向 192.168.10.1，PC2 与 PC3 的网关指向 192.168.20.1',
+        '在 PC1 上 ping 192.168.20.10（跨网段），并用 tracert 观察第一跳是谁',
+        '对照实验：在 PC2 上 ping 192.168.20.20（同一 VLAN，应在二层直达、不经网关）',
+        '用 display ip interface brief 查看 VLANIF 是否 up，用 display arp 查看两侧学到的表项'
+      ],
+      expected: [
+        'PC1 能 ping 通 VLAN 20 的 PC2（192.168.20.10）——跨网段经 VLANIF 网关转发成功',
+        'tracert 192.168.20.10 的第一跳是网关 192.168.10.1，证明流量先交给网关再转发出去',
+        'PC2 与 PC3（同属 VLAN 20）互通，同网段流量直接在二层转发、不经网关',
+        'CORE 的 ARP 表中学到跨 VLAN 的两侧主机：192.168.10.10 归属 Vlan-interface10、192.168.20.10 归属 Vlan-interface20',
+        '拓展验证：删掉 Vlan-interface 20 的 IP 地址后，PC1 立刻无法访问 192.168.20.10——没有网关就没有跨网段的转发者'
+      ]
+    },
+    {
+      id: 2,
+      name: 'VLAN 跨交换机跨网段访问实验',
+      devices: [
+        { model: 'S5560X-54C-EI', name: 'CORE', x: 300, y: 60 },
+        { model: 'S5110-52P', name: 'ACC1', x: 110, y: 300 },
+        { model: 'S5110-52P', name: 'ACC2', x: 500, y: 300 },
+        { model: 'PC', name: 'PC1', x: 40, y: 540 },
+        { model: 'PC', name: 'PC2', x: 430, y: 540 },
+        { model: 'PC', name: 'PC3', x: 640, y: 540 }
+      ],
+      links: [
+        ['PC1', 'GE0/1', 'ACC1', 'GE1/0/1'],
+        ['PC2', 'GE0/1', 'ACC2', 'GE1/0/1'],
+        ['PC3', 'GE0/1', 'ACC2', 'GE1/0/2'],
+        ['ACC1', 'GE1/0/24', 'CORE', 'GE1/0/1'],
+        ['ACC2', 'GE1/0/24', 'CORE', 'GE1/0/2']
+      ],
+      config: [
+        { dev: 'PC1', cmds: ['set ip 192.168.10.10 255.255.255.0 192.168.10.1'] },
+        { dev: 'PC2', cmds: ['set ip 192.168.20.10 255.255.255.0 192.168.20.1'] },
+        { dev: 'PC3', cmds: ['set ip 192.168.10.20 255.255.255.0 192.168.10.1'] },
+        { dev: 'ACC1', cmds: ['sysname ACC1', 'system-view',
+          'vlan 10', 'quit',
+          'vlan 20', 'quit',
+          'interface GigabitEthernet1/0/1', 'port link-type access', 'port access vlan 10', 'quit',
+          'interface GigabitEthernet1/0/24', 'port link-type trunk', 'port trunk permit vlan all', 'return'] },
+        { dev: 'ACC2', cmds: ['sysname ACC2', 'system-view',
+          'vlan 10', 'quit',
+          'vlan 20', 'quit',
+          'interface GigabitEthernet1/0/1', 'port link-type access', 'port access vlan 20', 'quit',
+          'interface GigabitEthernet1/0/2', 'port link-type access', 'port access vlan 10', 'quit',
+          'interface GigabitEthernet1/0/24', 'port link-type trunk', 'port trunk permit vlan all', 'return'] },
+        { dev: 'CORE', cmds: ['sysname CORE', 'system-view',
+          'vlan 10', 'quit',
+          'vlan 20', 'quit',
+          'interface GigabitEthernet1/0/1', 'port link-type trunk', 'port trunk permit vlan all', 'quit',
+          'interface GigabitEthernet1/0/2', 'port link-type trunk', 'port trunk permit vlan all', 'quit',
+          'interface Vlan-interface 10', 'ip address 192.168.10.1 255.255.255.0', 'quit',
+          'interface Vlan-interface 20', 'ip address 192.168.20.1 255.255.255.0', 'return'] }
+      ],
+      goal: [
+        '理解园区网典型的「核心三层 + 接入二层」两级组网：接入交换机只做二层转发，网关统一放在核心的 Vlan-interface 上',
+        '掌握接入交换机与核心交换机之间用 trunk 承载多个 VLAN、接入端口用 access 划入指定 VLAN 的完整配置',
+        '区分两条转发路径：同 VLAN 跨交换机走二层 trunk 直达，跨 VLAN 必须先交给三层 VLANIF 网关再转发'
+      ],
+      steps: [
+        '观察拓扑：CORE 为三层核心，下挂 ACC1、ACC2 两台二层接入交换机；PC1 属 VLAN 10，PC2 属 VLAN 20，PC3 属 VLAN 10',
+        '在 ACC1、ACC2 上创建 VLAN 10 与 VLAN 20，把接 PC 的口配成 access 并划入对应 VLAN',
+        '把 ACC1、ACC2 的上行口 GE1/0/24 与 CORE 的 GE1/0/1、GE1/0/2 全部配成 trunk 并允许所有 VLAN 通过',
+        '在 CORE 上创建 Vlan-interface 10（192.168.10.1/24）与 Vlan-interface 20（192.168.20.1/24）作为两个网段的网关',
+        '把 PC1、PC3 的网关指向 192.168.10.1，PC2 的网关指向 192.168.20.1',
+        '在 PC1 上 ping 192.168.20.10（跨交换机 + 跨网段），并用 tracert 观察首跳是不是网关 192.168.10.1',
+        '对照实验：在 PC1 上 ping 192.168.10.20（同 VLAN 但接在另一台接入交换机上），tracert 应只有一跳、不经网关',
+        '用 display vlan brief、display ip interface brief、display arp 核对 VLAN 成员、VLANIF 状态与学到的表项'
+      ],
+      expected: [
+        'PC1 能 ping 通 PC2（192.168.20.10）——流量经 ACC1 trunk 上送 CORE，由 VLANIF 网关三层转发后经 ACC2 下行',
+        'tracert 192.168.20.10 的第一跳是网关 192.168.10.1，第二跳才是 192.168.20.10',
+        'PC1 能 ping 通 PC3（192.168.10.20）——同 VLAN 跨交换机在二层经 trunk 直达，tracert 只有一跳、不出现网关',
+        'ACC1、ACC2 上不存在任何三层接口（display ip interface brief 无 VLANIF），网关只存在于 CORE',
+        'CORE 的 ARP 表同时学到 192.168.10.10（VLAN 10）与 192.168.20.10（VLAN 20）两条表项',
+        '拓展验证：把 CORE 的 GE1/0/1 改回 access 后，PC1 与 PC2 立刻不通——trunk 断了，VLAN 无法跨交换机延伸到网关'
+      ]
+    },
+    {
       name: '静态路由互连实验',
       devices: [
         { model: 'MSR36-20', name: 'R1', x: 90, y: 90 },
@@ -665,7 +780,7 @@
       ]
     },
     {
-      id: 8,
+      id: 10,
       name: 'IPv6 双栈端到端转发实验',
       devices: [
         { model: 'PC', name: 'PC1', x: 110, y: 360 },
@@ -708,56 +823,6 @@
         'display ipv6 routing-table 中出现目的网段 2001:db8:2::/64 的 Static 路由',
         'PC1 能 ping 通 PC2 的 IPv4 地址 192.168.2.20',
         'PC1 能 ping6 通 PC2 的 IPv6 地址 2001:db8:2::20（双栈均互通）'
-      ]
-    },
-    {
-      id: 9,
-      name: 'VLAN 跨网段访问（三层交换）实验',
-      devices: [
-        { model: 'S5560X-54C-EI', name: 'CORE', x: 250, y: 60 },
-        { model: 'PC', name: 'PC1', x: 60, y: 320 },
-        { model: 'PC', name: 'PC2', x: 250, y: 500 },
-        { model: 'PC', name: 'PC3', x: 460, y: 320 }
-      ],
-      links: [
-        ['PC1', 'GE0/1', 'CORE', 'GE1/0/1'],
-        ['PC2', 'GE0/1', 'CORE', 'GE1/0/2'],
-        ['PC3', 'GE0/1', 'CORE', 'GE1/0/3']
-      ],
-      config: [
-        { dev: 'PC1', cmds: ['set ip 192.168.10.10 255.255.255.0 192.168.10.1'] },
-        { dev: 'PC2', cmds: ['set ip 192.168.20.10 255.255.255.0 192.168.20.1'] },
-        { dev: 'PC3', cmds: ['set ip 192.168.20.20 255.255.255.0 192.168.20.1'] },
-        { dev: 'CORE', cmds: ['sysname CORE', 'system-view',
-          'vlan 10', 'port GigabitEthernet1/0/1', 'quit',
-          'vlan 20', 'port GigabitEthernet1/0/2', 'port GigabitEthernet1/0/3', 'quit',
-          'interface GigabitEthernet1/0/1', 'port link-type access', 'port access vlan 10', 'quit',
-          'interface GigabitEthernet1/0/2', 'port link-type access', 'port access vlan 20', 'quit',
-          'interface GigabitEthernet1/0/3', 'port link-type access', 'port access vlan 20', 'quit',
-          'interface Vlan-interface 10', 'ip address 192.168.10.1 255.255.255.0', 'quit',
-          'interface Vlan-interface 20', 'ip address 192.168.20.1 255.255.255.0', 'return'] }
-      ],
-      goal: [
-        '理解不同 VLAN 本质上是不同网段：二层互相隔离，必须依靠三层接口（VLANIF）做网关才能互访',
-        '掌握在三层交换机上创建 Vlan-interface 并配置网关地址的方法',
-        '体会「跨网段先看网关」：主机先把报文交给网关，由网关查路由表再转发到另一个 VLAN'
-      ],
-      steps: [
-        '观察拓扑：PC1 属于 VLAN 10，PC2 与 PC3 同属 VLAN 20，三台 PC 都直接接入三层交换机 CORE',
-        '在 CORE 上创建 VLAN 10 与 VLAN 20，并把 GE1/0/1 划入 VLAN 10，GE1/0/2、GE1/0/3 划入 VLAN 20（access 口）',
-        '创建 interface Vlan-interface 10，配置网关地址 192.168.10.1/24',
-        '创建 interface Vlan-interface 20，配置网关地址 192.168.20.1/24',
-        '把 PC1 的网关指向 192.168.10.1，PC2 与 PC3 的网关指向 192.168.20.1',
-        '在 PC1 上 ping 192.168.20.10（跨网段），并用 tracert 观察第一跳是谁',
-        '对照实验：在 PC2 上 ping 192.168.20.20（同一 VLAN，应在二层直达、不经网关）',
-        '用 display ip interface brief 查看 VLANIF 是否 up，用 display arp 查看两侧学到的表项'
-      ],
-      expected: [
-        'PC1 能 ping 通 VLAN 20 的 PC2（192.168.20.10）——跨网段经 VLANIF 网关转发成功',
-        'tracert 192.168.20.10 的第一跳是网关 192.168.10.1，证明流量先交给网关再转发出去',
-        'PC2 与 PC3（同属 VLAN 20）互通，同网段流量直接在二层转发、不经网关',
-        'CORE 的 ARP 表中学到跨 VLAN 的两侧主机：192.168.10.10 归属 Vlan-interface10、192.168.20.10 归属 Vlan-interface20',
-        '拓展验证：删掉 Vlan-interface 20 的 IP 地址后，PC1 立刻无法访问 192.168.20.10——没有网关就没有跨网段的转发者'
       ]
     }
   ];
