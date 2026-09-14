@@ -9,7 +9,7 @@
 
 > 《计算机网络设备配置》课程配套教学工具 —— 纯前端、零依赖的 H3C（Comware）风格交换机 / 路由器仿真终端。
 
-[![当前版本](https://img.shields.io/badge/version-1.7.7-blue)](CHANGELOG.md)
+[![当前版本](https://img.shields.io/badge/version-1.7.8-blue)](CHANGELOG.md)
 [![许可](https://img.shields.io/badge/license-教学用途-green)](LICENSE)
 
 ### 简介
@@ -24,7 +24,7 @@ H3C 网络仿真实验室是一个**纯前端、无构建步骤**的网络设备
 - **高级模块**：广域网 PPP/HDLC 接入、NAT（地址池 / NAPT / 静态 / 内部服务器）、VRRP 网关冗余、IS-IS 路由 + Route-Policy、IPv6 双栈。
 - **拓扑编辑**：拖拽添加设备、端口到端口连线、链路状态指示、设备删除 / 重置。
 - **工程与配置存取**：保存/读取（localStorage）、导出/打开工程文件（`.json`）、导出/导入设备配置（`.cfg`）。
-- **实验场景**：内置多套实验教学场景，含实验目标 / 步骤 / 预期结果。
+- **实验场景**：内置多套实验教学场景，含实验目标 / 步骤 / 预期结果；覆盖 VLAN 划分与 trunk、静态路由、OSPF、RSTP、广域网 PPP/HDLC、NAT、IS-IS + Route-Policy、VRRP 网关冗余、IPv6 双栈，以及 **VLAN 跨网段访问（三层交换 Vlan-interface 网关互访）**。
 - **选中高亮增强**：选中设备的描边加粗至 3.5px、填充提亮并叠加青色发光（drop-shadow），在深色画布上一眼可辨（此前仅 2.5px 细描边，几乎看不出）。
 - **悬浮交互**：PC / 服务器悬浮窗显示 MAC 地址；端口连线中点空白即取消；设备库悬浮显示设备简介与常用使用场景。
 
@@ -38,6 +38,7 @@ H3C 网络仿真实验室是一个**纯前端、无构建步骤**的网络设备
 
 | 版本 | 日期 | 要点 |
 | --- | --- | --- |
+| 1.7.8 | 2026-09-14 | 新增「VLAN 跨网段访问（三层交换）实验」场景 |
 | 1.7.7 | 2026-09-12 | 选中高亮增强 + 设备库悬浮窗补充简介与使用场景 |
 | 1.7.6 | 2026-09-11 | 悬浮交互增强：PC 显示 MAC / 点击空白取消连线 / 设备库悬浮详情 |
 | 1.7.5 | 2026-09-11 | PC 状态面板显示 MAC 地址（与转发实际 MAC 一致） |
@@ -73,7 +74,7 @@ H3C 网络仿真实验室是一个**纯前端、无构建步骤**的网络设备
 
 > A teaching tool for the *Computer Network Device Configuration* course — a pure-frontend, zero-dependency H3C (Comware) style switch / router simulation terminal.
 
-[![Version](https://img.shields.io/badge/version-1.7.7-blue)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.7.8-blue)](CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-Educational-green)](LICENSE)
 
 ### Introduction
@@ -89,7 +90,7 @@ H3C Network Simulation Lab is a **pure-frontend, build-free** network device con
 - **Advanced modules**: WAN PPP/HDLC access, NAT (address pool / NAPT / static / inside server), VRRP gateway redundancy, IS-IS routing + Route-Policy, IPv6 dual-stack.
 - **Topology editor**: drag-and-drop devices, port-to-port links, link status indicators, device deletion / reset.
 - **Project & config storage**: save/load (localStorage), export/open project files (`.json`), export/import device config (`.cfg`).
-- **Lab scenarios**: several built-in teaching scenarios with objectives / steps / expected results.
+- **Lab scenarios**: several built-in teaching scenarios with objectives / steps / expected results — covering VLAN/trunking, static routing, OSPF, RSTP, WAN PPP/HDLC, NAT, IS-IS + Route-Policy, VRRP gateway redundancy, IPv6 dual-stack, and **inter-VLAN routing via a Layer-3 switch**.
 - **Selection highlight**: selected device gets a bolder 3.5px stroke, brighter fill and a cyan glow — clearly visible on the dark canvas.
 - **Hover interactions**: PC / server hover tip shows the MAC; clicking blank cancels a link; palette hover shows device intro and common use cases.
 
@@ -103,6 +104,7 @@ Iterative versioning starts at **1.0.0**, summarized per day; rolled-back change
 
 | Version | Date | Highlights |
 | --- | --- | --- |
+| 1.7.8 | 2026-09-14 | New lab scenario: inter-VLAN routing via Layer-3 switch (Vlan-interface gateway) |
 | 1.7.7 | 2026-09-12 | Selection highlight + palette tooltip adds intro & use cases |
 | 1.7.6 | 2026-09-11 | Hover UX: PC shows MAC / click blank cancels link / palette shows device details |
 | 1.7.5 | 2026-09-11 | PC status panel shows MAC address (consistent with forwarding MAC) |
