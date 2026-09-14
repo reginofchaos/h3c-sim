@@ -4,10 +4,21 @@
   "author": "烧坏的内存条",
   "contact": "zyztonorrow@qq.com",
   "github": "https://github.com/reginofchaos/h3c-sim",
-  "version": "1.7.7",
-  "updated": "2026-09-12",
+  "version": "1.7.8",
+  "updated": "2026-09-14",
   "license": "教学用途 · 自由用于课堂实验",
   "changelog": [
+    {
+      "version": "1.7.8",
+      "date": "2026-09-14",
+      "title": "新增「VLAN 跨网段访问（三层交换）实验」场景",
+      "changes": [
+        "实验场景库新增第 10 个场景「VLAN 跨网段访问（三层交换）实验」：三层交换机 CORE 通过 Vlan-interface10/20 担任两个 VLAN 的网关，演示不同 VLAN（不同网段）之间如何互访",
+        "拓扑为 CORE(S5560X 三层交换) + PC1(VLAN10) + PC2/PC3(VLAN20)，其中 PC2 与 PC3 同属 VLAN 20 作为对照组，可直观对比「同 VLAN 二层直达」与「跨 VLAN 经网关转发」的差异",
+        "实验说明含目标/步骤/预期结果三段：步骤引导创建 Vlan-interface 网关地址、把 PC 网关指向 VLANIF，并用 ping / tracert / display arp 验证流量确实先交给网关（tracert 首跳为网关 192.168.10.1）",
+        "回归测试 verify.js 达 357 项断言全通过（新增 17 项跨 VLAN 转发断言，含删除 VLANIF 网关地址后应不通、恢复后应重新互通）"
+      ]
+    },
     {
       "version": "1.7.7",
       "date": "2026-09-12",
