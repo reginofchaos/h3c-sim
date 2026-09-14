@@ -4,10 +4,23 @@
   "author": "烧坏的内存条",
   "contact": "zyztonorrow@qq.com",
   "github": "https://github.com/reginofchaos/h3c-sim",
-  "version": "1.7.8",
-  "updated": "2026-09-14",
+  "version": "1.7.9",
+  "updated": "2026-09-15",
   "license": "教学用途 · 自由用于课堂实验",
   "changelog": [
+    {
+      "version": "1.7.9",
+      "date": "2026-09-15",
+      "title": "新增「VLAN 跨交换机跨网段访问实验」（核心三层 + 接入二层）",
+      "changes": [
+        "实验场景库新增第 11 个场景「VLAN 跨交换机跨网段访问实验」：三层核心 CORE 下挂 ACC1、ACC2 两台二层接入交换机，CORE↔ACC 之间用 trunk 承载 VLAN 10/20，网关统一放在 CORE 的 Vlan-interface 上——还原园区网「核心三层 + 接入二层」的典型两级组网",
+        "场景顺序调整：「VLAN 跨网段访问（三层交换）实验」前移到「VLAN 划分与 trunk 实验」之后，新场景紧随其后，形成 trunk → 三层交换网关 → 跨交换机三层转发的递进教学链路；后续场景索引顺延（verify.js 已同步）",
+        "转发引擎修复：三层路径现在可以穿越纯二层交换机。此前 resolveNextHop 只认「直连邻居」，PC→接入交换机→三层核心 这种组网会把下一跳停在无 IP 的接入交换机上并报 no route；新增 walkToTarget() 沿二层域找到网关的真正所有者",
+        "生成树修复：computeStp() 的 Dijkstra 把根端口记成了上游设备的端口名（prevPort[v] = up，本应为 vp），导致核心交换机连接两台接入交换机的 trunk 口之一被误判为 ALTE/discarding，上行链路被无故阻塞",
+        "新增实验对照组：PC1(VLAN10/ACC1) ping PC3(VLAN10/ACC2) 走二层 trunk 直达、tracert 只有一跳且不出现网关，与 PC1 ping PC2(VLAN20/ACC2) 的「首跳网关 + 第二跳目的」形成对比",
+        "回归测试 verify.js 达 373 项断言全通过（新增 16 项跨交换机跨网段断言，含 trunk 口不被 STP 误阻塞、同 VLAN 跨交换机不经网关、改回 access 后应不通）"
+      ]
+    },
     {
       "version": "1.7.8",
       "date": "2026-09-14",
