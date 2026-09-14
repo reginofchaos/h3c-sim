@@ -732,8 +732,85 @@ function run() {
     ok(/No IPv6 neighbor entry found/.test(nd2.out || ''), 'reset 后 R1 ND 表为空');
   }
 
+  /* ---------------- 四·L、VLAN 跨网段访问（三层交换 / VLANIF 网关） ---------------- */
+  console.log('\n=== 四·L、VLAN 跨网段访问（三层交换 / VLANIF 网关）===');
+  loadScenarioByUI(9);
+  const vlCORE = devByName('CORE'), vlPC1 = devByName('PC1'),
+        vlPC2 = devByName('PC2'), vlPC3 = devByName('PC3');
+  ok(!!vlCORE && !!vlPC1 && !!vlPC2 && !!vlPC3, 'VLAN 跨网段场景含 CORE/PC1/PC2/PC3 四台设备');
+  ok(S.S.links.length === 3, 'VLAN 跨网段场景含 3 条链路（三台 PC 均直连 CORE）', 'links=' + S.S.links.length);
+
+  if (vlCORE && vlPC1 && vlPC2 && vlPC3) {
+    const vlCoreSess = S.getSession(vlCORE.id), vlPc1Sess = S.getSession(vlPC1.id),
+          vlPc2Sess = S.getSession(vlPC2.id);
+    Sim.invalidate();
+
+    // 1) 两个 VLANIF 网关均存在且已 up（回归 1.7.4 修复过的「VLANIF 恒 down」bug）
+    const vl10 = vlCORE.cfg.ifaces['VLAN10'], vl20 = vlCORE.cfg.ifaces['VLAN20'];
+    ok(!!vl10 && !!vl10.ip && vl10.ip.addr === '192.168.10.1', 'CORE 的 Vlan-interface10 网关地址 192.168.10.1');
+    ok(!!vl20 && !!vl20.ip && vl20.ip.addr === '192.168.20.1', 'CORE 的 Vlan-interface20 网关地址 192.168.20.1');
+    ok(Sim.l3Up(vlCORE, 'VLAN10') && Sim.l3Up(vlCORE, 'VLAN20'), '两个 VLANIF 均为 up');
+
+    // 2) 直连路由：两个网段分别挂在各自 VLANIF 上
+    const vlRt = Sim.routesOf(vlCORE) || [];
+    ok(vlRt.some(function (r) { return r.dest === '192.168.10.0' && r.mask === 24 && r.oif === 'VLAN10'; }),
+      'CORE 有 192.168.10.0/24 直连路由且出接口为 VLAN10');
+    ok(vlRt.some(function (r) { return r.dest === '192.168.20.0' && r.mask === 24 && r.oif === 'VLAN20'; }),
+      'CORE 有 192.168.20.0/24 直连路由且出接口为 VLAN20');
+
+    // 3) 跨网段正向：PC1(VLAN10) → PC2(VLAN20)
+    const vlCross = E.exec(vlPC1, vlPc1Sess, 'ping 192.168.20.10');
+    ok(!vlCross.err && /Reply from 192\.168\.20\.10/.test(vlCross.out),
+      'PC1 跨网段 ping 通 PC2 192.168.20.10（经 VLANIF 网关转发）');
+
+    // 4) 反向也要通（网关双向转发）
+    const vlBack = E.exec(vlPC2, vlPc2Sess, 'ping 192.168.10.10');
+    ok(!vlBack.err && /Reply from 192\.168\.10\.10/.test(vlBack.out),
+      'PC2 反向 ping 通 PC1 192.168.10.10');
+
+    // 5) 同 VLAN 对照组：PC2 与 PC3 同属 VLAN20，二层直达不经网关
+    const vlSame = E.exec(vlPC2, vlPc2Sess, 'ping 192.168.20.20');
+    ok(!vlSame.err && /Reply from 192\.168\.20\.20/.test(vlSame.out),
+      '同 VLAN 的 PC2 ping 通 PC3 192.168.20.20');
+
+    // 6) tracert 路径含网关 —— 跨网段流量先交网关的直接证据
+    const vlTr = E.exec(vlPC1, vlPc1Sess, 'tracert 192.168.20.10');
+    ok(!vlTr.err && /192\.168\.10\.1/.test(vlTr.out), 'tracert 路径含网关 192.168.10.1');
+
+    // 7) CORE 的 ARP 表跨 VLAN 学到两侧主机
+    ok(!!(vlCORE.rt.arp && vlCORE.rt.arp['192.168.10.10']), 'CORE ARP 学到 VLAN10 侧主机 192.168.10.10');
+    ok(!!(vlCORE.rt.arp && vlCORE.rt.arp['192.168.20.10']), 'CORE ARP 学到 VLAN20 侧主机 192.168.20.10');
+
+    // 8) dis cu 能渲染 VLANIF 配置
+    const vlCu = H.Config.render(vlCORE);
+    ok(/interface Vlan-interface10/.test(vlCu), 'dis cu 渲染 interface Vlan-interface10');
+    ok(/ip address 192\.168\.20\.1 255\.255\.255\.0/.test(vlCu), 'dis cu 渲染 VLANIF20 的网关地址');
+
+    // 9) 教学验证：删掉 VLANIF20 的网关地址 → PC1 失去跨网段出口
+    E.exec(vlCORE, vlCoreSess, 'system-view');
+    E.exec(vlCORE, vlCoreSess, 'interface Vlan-interface 20');
+    E.exec(vlCORE, vlCoreSess, 'undo ip address 192.168.20.1 255.255.255.0');
+    E.exec(vlCORE, vlCoreSess, 'return');
+    Sim.invalidate();
+    const vlNoGw = E.exec(vlPC1, vlPc1Sess, 'ping 192.168.20.10');
+    ok(!/Reply from 192\.168\.20\.10/.test(vlNoGw.out || ''),
+      '删除 VLANIF20 网关地址后 PC1 无法访问 192.168.20.10（无转发者）');
+
+    // 10) 恢复网关后重新互通
+    E.exec(vlCORE, vlCoreSess, 'system-view');
+    E.exec(vlCORE, vlCoreSess, 'interface Vlan-interface 20');
+    E.exec(vlCORE, vlCoreSess, 'ip address 192.168.20.1 255.255.255.0');
+    E.exec(vlCORE, vlCoreSess, 'return');
+    Sim.invalidate();
+    const vlBack2 = E.exec(vlPC1, vlPc1Sess, 'ping 192.168.20.10');
+    ok(!vlBack2.err && /Reply from 192\.168\.20\.10/.test(vlBack2.out), '恢复 VLANIF20 网关地址后 PC1 重新 ping 通');
+  }
+
   /* ---------------- 四·K、ping/tracert 命令模式去歧义（BUG：IPv4 地址同时匹配 <ip> 与 <word>） ---------------- */
   console.log('\n=== 四·K、ping / tracert 命令去歧义 ===');
+  // 本小节需要一台"已配置 IP"的设备做源地址（无 IP 的设备 ping 会返回"The source address does not exist."，
+  // 拿不到 Ping 头）。原先沿用上一段遗留拓扑，一旦前序场景换了型号或缺 IP 就会失败 —— 改为显式加载。
+  loadScenarioByUI(8);   // IPv6 场景含 MSR36-20 路由器，接口已配置 IPv4/IPv6
   // 在 system 视图对任意设备执行 ping 命令，不应报歧义错误
   var firstSw = null;
   S.S.devices.forEach(function (d) {
@@ -785,7 +862,7 @@ function run() {
   console.log('\n=== 六、关于面板与版本管理 ===');
   const AB = (window.H3C && window.H3C.ABOUT) || {};
   ok(AB && typeof AB === 'object', 'H.ABOUT 已挂载到 window.H3C');
-  ok(AB.version === '1.7.7', '当前版本号为 1.7.7', 'got ' + AB.version);
+  ok(AB.version === '1.7.8', '当前版本号为 1.7.8', 'got ' + AB.version);
   ok(AB.contact === 'zyztonorrow@qq.com', '联系方式为 zyztonorrow@qq.com');
   ok(/github\.com/.test(AB.github || ''), '包含 GitHub 仓库地址');
   ok(Array.isArray(AB.changelog) && AB.changelog.length >= 5, '更新日志含 >=5 个版本（1.0.0 起）');
