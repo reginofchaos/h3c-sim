@@ -105,7 +105,8 @@
         if (e.a === u) { v = e.b; cost = e.costA; up = e.ap; vp = e.bp; }
         else if (e.b === u) { v = e.a; cost = e.costB; up = e.bp; vp = e.ap; }
         else return;
-        if (dist[u] + cost < dist[v]) { dist[v] = dist[u] + cost; prev[v] = u; prevPort[v] = up; }
+        /* prevPort[v] 必须是 v 自己这一侧的端口（vp）；用 up 会把根端口记到上游设备上 */
+        if (dist[u] + cost < dist[v]) { dist[v] = dist[u] + cost; prev[v] = u; prevPort[v] = vp; }
       });
     }
 
@@ -1193,6 +1194,82 @@
     return best;
   }
 
+  /* ============ 二层中继：穿越纯二层交换机找到真正的三层目标 ============ */
+  /* 设备是否配置了任何三层地址（没有则可视为纯二层设备，帧可以直接透传） */
+  function hasL3Addr(dev) {
+    var has = false;
+    l3Ifaces(dev).forEach(function (o) { if (o.f.ip && o.f.ip.addr) has = true; });
+    return has;
+  }
+  Sim.hasL3Addr = hasL3Addr;
+
+  /* 设备上拥有 target 地址的三层接口名（含 VRRP 虚拟 IP），没有则返回 null */
+  function ownerIface(dev, target) {
+    var hit = null;
+    l3Ifaces(dev).forEach(function (o) {
+      if (o.f.ip && o.f.ip.addr === target) hit = o.name;
+      (o.f.ipSecondary || []).forEach(function (s) { if (s.addr === target) hit = o.name; });
+    });
+    if (!hit) {
+      var vo = vrrpOwner(target);
+      if (vo && vo.dev.id === dev.id) hit = vo.iface;
+    }
+    return hit;
+  }
+  Sim.ownerIface = ownerIface;
+
+  /* 帧进入 dev 的 portName 后，可能承载的 VLAN 列表。
+     trunk 口 permit vlan all 会被展开成 1..4094，这里收敛到设备上实际创建的 VLAN，避免 BFS 爆炸。 */
+  function relayVlans(dev, portName, vlan) {
+    if (vlan != null) return [vlan];
+    var f = iface(dev, portName);
+    var out = [];
+    if (f && f.linkType === 'access') { out.push(f.accessVlan || 1); return out; }
+    if (f && (f.linkType === 'trunk' || f.linkType === 'hybrid')) {
+      var created = dev.cfg.vlans || {};
+      (f.permitVlans || []).forEach(function (v) { if (created[v] && out.indexOf(v) < 0) out.push(v); });
+      (f.untaggedVlans || []).forEach(function (v) { if (created[v] && out.indexOf(v) < 0) out.push(v); });
+    }
+    if (!out.length) {
+      Object.keys(dev.cfg.vlans || {}).forEach(function (v) { out.push(Number(v)); });
+    }
+    return out.length ? out : [1];
+  }
+  Sim.relayVlans = relayVlans;
+
+  /* 从 dev 的 portName 发出后，沿二层域下行找到真正拥有 target 的设备。
+     只有"不存在任何三层地址"的纯二层设备才会被穿透，三层设备一律视为终点。
+     返回 { localPort, peerDev, peerIf, relay } 或 null */
+  function walkToTarget(dev, portName, vlan, target, depth, seen) {
+    depth = depth || 0;
+    if (depth > 6) return null;
+    var pr = S.getPeer(dev.id, portName);
+    if (!pr) return null;
+    var pd = S.getDevice(pr.dev);
+    if (!pd) return null;
+    if (seen && seen[pd.id]) return null;
+    if (ownerIface(pd, target)) {
+      return { localPort: portName, peerDev: pd.id, peerIf: pr.port, relay: depth };
+    }
+    if (hasL3Addr(pd)) return null;
+    var vlist = relayVlans(pd, pr.port, vlan);
+    for (var vi = 0; vi < vlist.length; vi++) {
+      var outs = portsInVlan(pd, vlist[vi], true);
+      for (var i = 0; i < outs.length; i++) {
+        if (outs[i] === pr.port) continue;
+        var s2 = {};
+        if (seen) Object.keys(seen).forEach(function (k) { s2[k] = 1; });
+        s2[dev.id] = 1; s2[pd.id] = 1;
+        var deeper = walkToTarget(pd, outs[i], vlist[vi], target, depth + 1, s2);
+        if (deeper) {
+          return { localPort: portName, peerDev: deeper.peerDev, peerIf: deeper.peerIf, relay: deeper.relay };
+        }
+      }
+    }
+    return null;
+  }
+  Sim.walkToTarget = walkToTarget;
+
   /* 给定出接口与目标 IP，找出实际二层出口与对端设备 */
   function resolveNextHop(dev, oif, target) {
     var info = l3IfaceInfo(dev, oif);
@@ -1209,6 +1286,10 @@
         var pr = S.getPeer(dev.id, oif);
         if (!pr) return null;
         var pd = S.getDevice(pr.dev); if (!pd) return null;
+        /* 三层口的对端若是纯二层交换机，真正的网关可能还在二层域更下游
+           （PC → 接入交换机 → 三层核心 这种两级组网），需沿二层域找到网关的所有者 */
+        var far = walkToTarget(dev, oif, null, target);
+        if (far) return far;
         return { localPort: oif, peerDev: pr.dev, peerIf: pr.port };
       }
     } else if (info.kind === 'agg' || info.kind === 'ragg') {
@@ -1262,6 +1343,13 @@
         var pd2 = S.getDevice(pp.dev);
         if (!pd2 || pd2.id !== owner.dev) continue;
         peerInfo = { localPort: plist[k], peerDev: pp.dev, peerIf: pp.port };
+      }
+      /* 目标不在直连邻居上（中间隔着纯二层交换机）：沿二层域中继找到真正的所有者 */
+      if (!peerInfo) {
+        for (var k2 = 0; k2 < plist.length && !peerInfo; k2++) {
+          var far2 = walkToTarget(dev, plist[k2], v, target);
+          if (far2 && far2.peerDev === owner.dev) peerInfo = far2;
+        }
       }
       if (peerInfo) return peerInfo;
     }
