@@ -152,7 +152,7 @@
     undo: function (c) { c.dev.cfg.dhcp.enable = false; return { out: '' }; }
   });
   R({
-    views: ['system'], pat: 'dhcp server ip-pool <word>', seq: 'dhcp',
+    views: ['system', 'interface', 'if-range'], nav: true, pat: 'dhcp server ip-pool <word>', seq: 'dhcp',
     help: '创建 DHCP 地址池并进入地址池视图',
     run: function (c) {
       var p = c.dev.cfg.dhcp.pools.filter(function (x) { return x.name === c.args.word; })[0];
