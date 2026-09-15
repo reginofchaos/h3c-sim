@@ -164,6 +164,7 @@
         undoFn: typeof spec.undo === 'function' ? spec.undo : null,
         run: spec.run,
         global: spec.global || false,
+        nav: spec.nav || false,   // 视图导航命令（vlan/interface/ospf 等进入子视图的命令）
         hidden: spec.hidden || false
       });
     });
@@ -172,6 +173,9 @@
 
   function viewAllows(cmd, view) {
     if (cmd.global) return true;
+    /* 视图导航命令（vlan 10 / ospf 1 / interface GE1/0/1 等）：真机 Comware
+       允许在任意配置视图下直接跳转子视图（用户视图除外，需先 system-view）。 */
+    if (cmd.nav && view !== 'user') return true;
     /* 接口范围视图（interface range）复用 interface 视图下的全部命令，
        这样几十条接口级命令无需逐个改造即可在 if-range 视图下生效。 */
     if (view === 'if-range' && cmd.views.indexOf('interface') >= 0) return true;
@@ -417,11 +421,13 @@
       }
       if (r.enter) {
         var topV = sess.stack[sess.stack.length - 1];
-        /* 接口视图之间可以直接跳转（真机行为）：替换栈顶而不是继续压栈，
-           这样连续 int GE1/0/1 -> int GE1/0/2 只需一次 quit 即可回到系统视图。 */
-        if ((r.enter.view === 'interface' || r.enter.view === 'if-range') &&
-            topV && (topV.view === 'interface' || topV.view === 'if-range')) {
-          sess.stack[sess.stack.length - 1] = r.enter;
+        /* 真机行为：从任何非系统视图进入「系统级子视图」（VIEW_TREE 中父视图为
+           system 的，如 vlan/ospf/acl/interface 等）时，等价于先退回系统视图再进入，
+           整个栈被重置为 user→system→新视图——一次 quit 即回到系统视图。
+           （覆盖接口视图互跳、vlan 互跳、深层视图如 ospf-area 跳 vlan 等所有情形） */
+        if (topV && topV.view !== 'system' && topV.view !== 'user' &&
+            (VIEW_TREE[r.enter.view] || {}).parent === 'system') {
+          sess.stack = [{ view: 'user', arg: null }, { view: 'system', arg: null }, r.enter];
         } else sess.stack.push(r.enter);
       }
       if (r.exit) { if (sess.stack.length > 1) sess.stack.pop(); }
