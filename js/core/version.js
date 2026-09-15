@@ -11,11 +11,25 @@
     author: '烧坏的内存条',
     contact: 'zyztonorrow@qq.com',
     github: 'https://github.com/reginofchaos/h3c-sim',
-    version: '1.8.0',
+    version: '1.9.0',
     updated: '2026-09-15',
     license: '教学用途 · 自由用于课堂实验',
     // 按日汇总的版本跨度；index 0 为最新版本
     changelog: [
+      {
+        version: '1.9.0',
+        date: '2026-09-15',
+        title: "接口视图可直切 + interface range 批量配置",
+        changes: [
+          "接口视图之间可以直接跳转：在 GE1/0/1 端口视图下直接敲 interface GE1/0/2 就能切到 GE1/0/2，VLAN 接口、聚合口、LoopBack 同理，不必先 quit 回系统视图。切换采用替换栈顶而非继续压栈，因此仍然只需一次 quit 即可回到系统视图",
+          "新增 interface range 批量配置（含缩写 int range / int ran）：进入后提示符变为 [设备名-if-range]，后续配置对范围内所有端口同时生效",
+          "range 支持多种真机写法：GE1/0/1 to GE1/0/10（区间）、g1/0/1,g1/0/5（离散端口逗号分隔）、GigabitEthernet 1/0/1 to GigabitEthernet 1/0/10（全名带空格）",
+          "range 视图同样支持视图直切：端口视图内可直接 int range ... 切到批量模式，批量模式下也可直接 int GE1/0/9 切回单端口",
+          "批量能力在命令引擎层实现：为范围内每个端口临时构造接口视图上下文并重放命令，因此几十条既有接口级命令（port link-type / port access vlan / port trunk permit vlan / shutdown / undo ...）无需逐个改造即可批量生效",
+          "新增 undo port link-type（不带参数，恢复缺省链路类型）；port trunk permit vlan 支持真机的空格分隔写法（10 20）",
+          "回归测试 verify.js 达 426 项断言全通过（新增 32 项接口视图直切与 range 批量配置断言）"
+        ]
+      },
       {
         version: '1.8.0',
         date: '2026-09-15',
