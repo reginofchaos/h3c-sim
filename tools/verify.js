@@ -995,6 +995,110 @@ function run() {
   var engSrc = fs.readFileSync(path.join(ROOT, 'js/core/engine.js'), 'utf8');
   ok(/host:\s*\{[^}]*U\.isIp\(v\)/.test(engSrc), 'engine 新增 <host> token（接受 IPv4 或主机名）');
 
+  /* ---------------- 四·O、接口视图直切 + interface range 批量配置（1.9.0 新增） ---------------- */
+  console.log('\n=== 四·O、接口视图直切与 interface range 批量配置 ===');
+  {
+    const oDev = S.addDevice('S5130-28S-EI', 'RANGESW', 620, 460);
+    const oSess = S.getSession(oDev.id);
+    const oX = function (line) { return E.exec(oDev, oSess, line); };
+    const oPrompt = function () { return E.promptFor(oDev, oSess); };
+    const oIf = function (n) { return oDev.cfg.ifaces[n]; };
+    let oR, oAll, i;
+    oX('system-view');
+
+    // ① 端口视图之间直接跳转
+    oX('interface GE1/0/1');
+    ok(oPrompt() === '[RANGESW-GE1/0/1]', '① int GE1/0/1 进入端口视图', oPrompt());
+    const oDepth = oSess.stack.length;
+    oR = oX('interface GE1/0/2');
+    ok(!oR.err, '① 端口视图内可直接 int GE1/0/2（无需 quit）', JSON.stringify(oR.out));
+    ok(oPrompt() === '[RANGESW-GE1/0/2]', '① 直切后提示符为 [RANGESW-GE1/0/2]', oPrompt());
+    ok(oSess.stack.length === oDepth, '① 直切不压栈（栈深度仍为 ' + oSess.stack.length + '）');
+    oX('description to-pc2');
+    ok(oIf('GE1/0/2').desc === 'to-pc2', '① 配置落在 GE1/0/2 上');
+    ok(!oIf('GE1/0/1').desc, '① GE1/0/1 未被误配');
+    oX('quit');
+    ok(oPrompt() === '[RANGESW]', '① 一次 quit 回到系统视图', oPrompt());
+
+    // ② 端口视图 → VLAN 接口视图
+    oX('int GE1/0/1');
+    oR = oX('interface Vlan-interface 10');
+    ok(!oR.err && oPrompt() === '[RANGESW-VLAN10]', '② 端口视图内可直接进 VLAN 接口', oPrompt());
+    oX('int vlan 20');
+    ok(oPrompt() === '[RANGESW-VLAN20]', '② VLAN 接口之间也可直切', oPrompt());
+    oX('quit');
+
+    // ③ interface range 批量配置
+    oR = oX('int range GE1/0/1 to GE1/0/5');
+    ok(!oR.err, '③ int range GE1/0/1 to GE1/0/5 可执行', JSON.stringify(oR.out));
+    ok(oPrompt() === '[RANGESW-if-range]', '③ 提示符变为 [RANGESW-if-range]', oPrompt());
+    oX('port access vlan 20');
+    oAll = true;
+    for (i = 1; i <= 5; i++) if (oIf('GE1/0/' + i).accessVlan !== 20) oAll = false;
+    ok(oAll, '③ range 下 port access vlan 20 对 5 个口全部生效');
+    ok(oIf('GE1/0/6').accessVlan !== 20, '③ 范围外的 GE1/0/6 未被影响');
+    oX('quit');
+
+    // ④ range 的多种写法
+    oR = oX('int ran g1/0/6 to g1/0/8');
+    ok(!oR.err && oPrompt() === '[RANGESW-if-range]', '④ 缩写 int ran + 小写短名可识别', oPrompt());
+    oX('port trunk permit vlan 10 20');
+    oAll = true;
+    for (i = 6; i <= 8; i++) {
+      const pv = oIf('GE1/0/' + i).permitVlans || [];
+      if (pv.indexOf(10) < 0 || pv.indexOf(20) < 0) oAll = false;
+    }
+    ok(oAll, '④ range 下 port trunk permit vlan 10 20 对 3 个口生效');
+    oX('quit');
+    oR = oX('interface range GigabitEthernet 1/0/11 to GigabitEthernet 1/0/14');
+    ok(!oR.err && oPrompt() === '[RANGESW-if-range]', '④ 全名带空格写法可解析', oPrompt());
+    oX('port access vlan 30');
+    oAll = true;
+    for (i = 11; i <= 14; i++) if (oIf('GE1/0/' + i).accessVlan !== 30) oAll = false;
+    ok(oAll, '④ 全名带空格写法批量生效（GE1/0/11~14）');
+    oX('quit');
+    oR = oX('int range g1/0/21,g1/0/23');
+    ok(!oR.err && oPrompt() === '[RANGESW-if-range]', '④ 逗号分隔离散端口可解析', oPrompt());
+    oX('port access vlan 40');
+    ok(oIf('GE1/0/21').accessVlan === 40 && oIf('GE1/0/23').accessVlan === 40, '④ 离散端口批量生效');
+    ok(oIf('GE1/0/22').accessVlan !== 40, '④ 中间端口 22 未被影响');
+    oX('quit');
+
+    // ⑤ range 视图也支持直切
+    oX('int GE1/0/1');
+    const oDepth2 = oSess.stack.length;
+    oR = oX('int range g1/0/2 to g1/0/4');
+    ok(!oR.err && oPrompt() === '[RANGESW-if-range]', '⑤ 端口视图内可直接切到 range 视图', oPrompt());
+    ok(oSess.stack.length === oDepth2, '⑤ range 直切同样不压栈（' + oSess.stack.length + '）');
+    oX('port link-type trunk');
+    oAll = true;
+    for (i = 2; i <= 4; i++) if (oIf('GE1/0/' + i).linkType !== 'trunk') oAll = false;
+    ok(oAll, '⑤ GE1/0/2~4 批量 trunk 生效');
+    oR = oX('int g1/0/9');
+    ok(!oR.err && oPrompt() === '[RANGESW-GE1/0/9]', '⑤ range 视图内可直切回单端口', oPrompt());
+    oX('quit');
+    ok(oPrompt() === '[RANGESW]', '⑤ quit 回系统视图', oPrompt());
+
+    // ⑥ range 下 undo / shutdown / 非法参数
+    oX('int range GE1/0/1 to GE1/0/3');
+    oR = oX('undo port link-type');
+    ok(!oR.err, '⑥ range 下 undo port link-type 可执行', JSON.stringify(oR.out));
+    oAll = true;
+    for (i = 1; i <= 3; i++) if (oIf('GE1/0/' + i).linkType !== 'access' || oIf('GE1/0/' + i).accessVlan !== 1) oAll = false;
+    ok(oAll, '⑥ undo 对范围内三个口都生效');
+    oR = oX('shutdown');
+    ok(!oR.err, '⑥ range 下 shutdown 可执行');
+    oAll = true;
+    for (i = 1; i <= 3; i++) if (oIf('GE1/0/' + i).adminUp !== false) oAll = false;
+    ok(oAll, '⑥ GE1/0/1~3 全部 shutdown');
+    oR = oX('display this');
+    ok(!oR.err && String(oR.out).length > 0, '⑥ range 下 display this 正常输出');
+    oX('quit');
+    oR = oX('int range GE1/0/99 to GE1/0/120');
+    ok(!!oR.err, '⑥ 不存在的端口范围报错');
+    ok(oPrompt() === '[RANGESW]', '⑥ 失败时不进入 range 视图', oPrompt());
+  }
+
   /* ---------------- 五、CSS 变量与布局 ---------------- */
   console.log('\n=== 五、可调宽度的 CSS 变量 ===');
   const css = fs.readFileSync(path.join(ROOT, 'css/style.css'), 'utf8');
@@ -1008,7 +1112,7 @@ function run() {
   console.log('\n=== 六、关于面板与版本管理 ===');
   const AB = (window.H3C && window.H3C.ABOUT) || {};
   ok(AB && typeof AB === 'object', 'H.ABOUT 已挂载到 window.H3C');
-  ok(AB.version === '1.8.0', '当前版本号为 1.8.0', 'got ' + AB.version);
+  ok(AB.version === '1.9.0', '当前版本号为 1.9.0', 'got ' + AB.version);
   ok(AB.contact === 'zyztonorrow@qq.com', '联系方式为 zyztonorrow@qq.com');
   ok(/github\.com/.test(AB.github || ''), '包含 GitHub 仓库地址');
   ok(Array.isArray(AB.changelog) && AB.changelog.length >= 5, '更新日志含 >=5 个版本（1.0.0 起）');
