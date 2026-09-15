@@ -21,7 +21,7 @@
 
   /* ==================== VLAN ==================== */
   R({
-    views: ['system'], pat: 'vlan <vid>', seq: 'l2',
+    views: ['system', 'interface', 'if-range'], nav: true, pat: 'vlan <vid>', seq: 'l2',
     help: '创建 VLAN 并进入 VLAN 视图',
     run: function (c) {
       C.vlanEnsure(c.dev, c.args.vid);
@@ -277,7 +277,7 @@
     help: '配置路径开销标准', run: function (c) { c.dev.cfg.stp.costStandard = c.args._0; return { out: '' }; }
   });
   R({
-    views: ['system'], pat: 'stp region-configuration', seq: 'stp',
+    views: ['system', 'interface', 'if-range'], nav: true, pat: 'stp region-configuration', seq: 'stp',
     help: '进入 MST 域配置视图',
     run: function (c) { return { enter: { view: 'mst-region', arg: null } }; }
   });
@@ -529,7 +529,7 @@
 
   /* ==================== 端口组 ==================== */
   R({
-    views: ['system'], pat: 'port-group manual <word>', hidden: true, seq: 'l2',
+    views: ['system', 'interface', 'if-range'], nav: true, pat: 'port-group manual <word>', hidden: true, seq: 'l2',
     help: '创建手工端口组',
     run: function (c) { c.dev.cfg.portGroups[c.args.word] = { members: [] }; return { enter: { view: 'port-group', arg: c.args.word } }; }
   });
