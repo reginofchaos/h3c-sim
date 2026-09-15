@@ -17,7 +17,7 @@
 
   /* ==================== OSPF ==================== */
   R({
-    views: ['system'], pat: 'ospf <int>', seq: 'ospf',
+    views: ['system', 'interface', 'if-range'], nav: true, pat: 'ospf <int>', seq: 'ospf',
     help: '创建 OSPF 进程并进入 OSPF 视图',
     run: function (c) {
       c.dev.cfg.ospf.enable = true;
@@ -30,7 +30,7 @@
     }
   });
   R({
-    views: ['system'], pat: 'ospf <int> router-id <ip>', seq: 'ospf',
+    views: ['system', 'interface', 'if-range'], nav: true, pat: 'ospf <int> router-id <ip>', seq: 'ospf',
     help: '创建 OSPF 进程并指定 Router ID',
     run: function (c) {
       c.dev.cfg.ospf.enable = true;
@@ -224,7 +224,7 @@
 
   /* ==================== RIP ==================== */
   R({
-    views: ['system'], pat: 'rip <int>', seq: 'rip',
+    views: ['system', 'interface', 'if-range'], nav: true, pat: 'rip <int>', seq: 'rip',
     help: '创建 RIP 进程并进入 RIP 视图',
     run: function (c) {
       c.dev.cfg.rip.enable = true; c.dev.cfg.rip.process = parseInt(c.args.int, 10);
@@ -307,7 +307,7 @@
 
   /* ==================== BGP ==================== */
   R({
-    views: ['system'], pat: 'bgp <int>', seq: 'bgp',
+    views: ['system', 'interface', 'if-range'], nav: true, pat: 'bgp <int>', seq: 'bgp',
     help: '创建 BGP 进程并进入 BGP 视图',
     run: function (c) {
       c.dev.cfg.bgp.enable = true; c.dev.cfg.bgp.as = parseInt(c.args.int, 10);
@@ -398,7 +398,7 @@
 
   /* ==================== IS-IS ==================== */
   R({
-    views: ['system'], pat: 'isis <int>', seq: 'isis',
+    views: ['system', 'interface', 'if-range'], nav: true, pat: 'isis <int>', seq: 'isis',
     help: '创建 IS-IS 进程并进入 IS-IS 视图',
     run: function (c) {
       c.dev.cfg.isis.enable = true;
