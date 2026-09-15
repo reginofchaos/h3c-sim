@@ -84,7 +84,7 @@
 
   /* ---- QoS 策略 ---- */
   R({
-    views: ['system'], pat: 'qos policy <word>', seq: 'qos',
+    views: ['system', 'interface', 'if-range'], nav: true, pat: 'qos policy <word>', seq: 'qos',
     help: '创建 QoS 策略并进入策略视图',
     run: function (c) {
       c.dev.cfg.qos.enable = true;
@@ -104,7 +104,7 @@
 
   /* ---- 流分类 ---- */
   R({
-    views: ['system'], pat: 'traffic classifier <word>', seq: 'qos',
+    views: ['system', 'interface', 'if-range'], nav: true, pat: 'traffic classifier <word>', seq: 'qos',
     help: '创建流分类并进入流分类视图',
     run: function (c) {
       c.dev.cfg.qos.class[c.args.word] = { name: c.args.word, operator: 'and', matches: [] };
@@ -112,7 +112,7 @@
     }
   });
   R({
-    views: ['system'], pat: 'traffic classifier <word> operator +and|or', seq: 'qos',
+    views: ['system', 'interface', 'if-range'], nav: true, pat: 'traffic classifier <word> operator +and|or', seq: 'qos',
     help: '创建流分类并指定运算符',
     run: function (c) {
       c.dev.cfg.qos.class[c.args._0] = { name: c.args._0, operator: c.args._1, matches: [] };
@@ -148,7 +148,7 @@
 
   /* ---- 流行为 ---- */
   R({
-    views: ['system'], pat: 'traffic behavior <word>', seq: 'qos',
+    views: ['system', 'interface', 'if-range'], nav: true, pat: 'traffic behavior <word>', seq: 'qos',
     help: '创建流行为并进入流行为视图',
     run: function (c) {
       c.dev.cfg.qos.behavior[c.args.word] = { name: c.args.word, actions: [] };
