@@ -91,13 +91,17 @@
     return kw.indexOf(tok) === 0;
   }
 
-  function matchTokens(matcher, tokens, start, dev) {
+  /* allowTrailingVars: 允许省略尾部的变量参数（仅用于 undo 场景）。
+     真机上 `undo stp priority`、`undo ospf cost` 这类命令可以不带参数，
+     而模式语法没有"可选变量"，故在严格匹配全部失败时用它兜底。 */
+  function matchTokens(matcher, tokens, start, dev, allowTrailingVars) {
     var pos = start, args = {}, score = 0, seq = 0;
     for (var i = 0; i < matcher.length; i++) {
       var m = matcher[i];
       var tok = tokens[pos];
       if (tok === undefined) {
         if (m.type === 'opt') continue;
+        if (allowTrailingVars && m.type === 'var') continue;
         return null;
       }
       if (m.type === 'kw') {
@@ -181,6 +185,17 @@
       if (!viewAllows(c, v)) continue;
       var r = matchTokens(c.matcher, tokens, 0, dev);
       if (r) res.push({ cmd: c, args: r.args, score: r.score, idx: i });
+    }
+    /* 只有在严格匹配一个都没命中时才放宽：undo 允许省略尾部变量。
+       放在兜底位置，不会影响既有命令的精确匹配与歧义判定。 */
+    if (!res.length && undo) {
+      for (var j = 0; j < cmds.length; j++) {
+        var c2 = cmds[j];
+        if (undo && !c2.undo && !c2.undoFn) continue;
+        if (!viewAllows(c2, v)) continue;
+        var r2 = matchTokens(c2.matcher, tokens, 0, dev, true);
+        if (r2) res.push({ cmd: c2, args: r2.args, score: r2.score, idx: j });
+      }
     }
     res.sort(function (a, b) { return b.score - a.score || a.idx - b.idx; });
     return res;
