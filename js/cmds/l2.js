@@ -109,6 +109,12 @@
         if (t === 'hybrid') { f.permitVlans = [1]; f.untaggedVlans = [1]; }
       });
       return res;
+    },
+    undo: function (c) {
+      return applyIfaces(c, function (f) {
+        if (f.mode === 'route') return;
+        f.linkType = 'access'; f.accessVlan = 1; f.pvid = 1; f.permitVlans = [1];
+      });
     }
   });
   R({
