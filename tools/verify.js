@@ -175,9 +175,9 @@ function run() {
 
   const cases = [
     { idx: 0, name: 'VLAN 划分与 trunk 实验', src: 'PC1', dst: '192.168.10.20' },
-    { idx: 3, name: '静态路由互连实验', src: 'PC1', dst: '10.2.2.10' },
-    { idx: 4, name: 'OSPF 动态路由实验', src: 'PC1', dst: '10.0.23.3' },
-    { idx: 5, name: 'RSTP 冗余与阻塞实验', src: 'PC1', dst: '172.16.0.20' }
+    { idx: 4, name: '静态路由互连实验', src: 'PC1', dst: '10.2.2.10' },
+    { idx: 5, name: 'OSPF 动态路由实验', src: 'PC1', dst: '10.0.23.3' },
+    { idx: 6, name: 'RSTP 冗余与阻塞实验', src: 'PC1', dst: '172.16.0.20' }
   ];
 
   cases.forEach(function (c, i) {
@@ -359,7 +359,7 @@ function run() {
   /* ---------------- 四·E、广域网 PPP/HDLC 接入（PPP/HDLC/CHAP 状态机） ---------------- */
   console.log('\n=== 四·E、广域网 PPP/HDLC 接入（PPP/HDLC/CHAP 状态机）===');
   // 加载「广域网 PPP/HDLC 接入实验」场景（索引 4）
-  loadScenarioByUI(6);
+  loadScenarioByUI(7);
   const wanR1 = devByName('R1'), wanR2 = devByName('R2'),
         wanPC1 = devByName('PC1'), wanPC2 = devByName('PC2');
   ok(!!wanR1 && !!wanR2 && !!wanPC1 && !!wanPC2, 'WAN 场景含 R1/R2/PC1/PC2 四台设备');
@@ -419,7 +419,7 @@ function run() {
 
   /* ---------------- 四·F、NAT 地址转换（Easy-IP 真实转发） ---------------- */
   console.log('\n=== 四·F、NAT 地址转换（Easy-IP 真实转发）===');
-  loadScenarioByUI(7);
+  loadScenarioByUI(8);
   const natR1 = devByName('R1'), natR2 = devByName('R2'),
         natPC1 = devByName('PC1'), natPC2 = devByName('PC2');
   ok(!!natR1 && !!natR2 && !!natPC1 && !!natPC2, 'NAT 场景含 R1/R2/PC1/PC2 四台设备');
@@ -499,7 +499,7 @@ function run() {
 
   /* ---------------- 四·G、IS-IS 路由 + Route-Policy 真实生效 ---------------- */
   console.log('\n=== 四·G、IS-IS 路由 + Route-Policy 真实生效 ===');
-  loadScenarioByUI(8);
+  loadScenarioByUI(9);
   const isR1 = devByName('R1'), isR2 = devByName('R2'),
         isPC1 = devByName('PC1'), isPC2 = devByName('PC2');
   ok(!!isR1 && !!isR2 && !!isPC1 && !!isPC2, 'IS-IS 场景含 R1/R2/PC1/PC2 四台设备');
@@ -570,7 +570,7 @@ function run() {
 
   /* ---------------- 四·H、VRRP 网关冗余（主备选举 + 虚拟网关 + 故障切换） ---------------- */
   console.log('\n=== 四·H、VRRP 网关冗余（主备选举 + 虚拟网关 + 故障切换）===');
-  loadScenarioByUI(9);
+  loadScenarioByUI(10);
   const vrR1 = devByName('R1'), vrR2 = devByName('R2'),
         vrSW = devByName('SW'), vrPC1 = devByName('PC1');
   ok(!!vrR1 && !!vrR2 && !!vrSW && !!vrPC1, 'VRRP 场景含 R1/R2/SW/PC1 四台设备');
@@ -627,7 +627,7 @@ function run() {
 
   /* ---------------- 四·J、IPv6 双栈端到端转发 + ping6 ---------------- */
   console.log('\n=== 四·J、IPv6 双栈端到端转发 + ping6 ===');
-  loadScenarioByUI(10);
+  loadScenarioByUI(11);
   const v6R1 = devByName('R1'), v6R2 = devByName('R2'),
         v6PC1 = devByName('PC1'), v6PC2 = devByName('PC2');
   ok(!!v6R1 && !!v6R2 && !!v6PC1 && !!v6PC2, 'IPv6 场景含 R1/R2/PC1/PC2 四台设备');
@@ -734,7 +734,7 @@ function run() {
 
   /* ---------------- 四·L、VLAN 跨网段访问（三层交换 / VLANIF 网关） ---------------- */
   console.log('\n=== 四·L、VLAN 跨网段访问（三层交换 / VLANIF 网关）===');
-  loadScenarioByUI(1);
+  loadScenarioByUI(2);
   const vlCORE = devByName('CORE'), vlPC1 = devByName('PC1'),
         vlPC2 = devByName('PC2'), vlPC3 = devByName('PC3');
   ok(!!vlCORE && !!vlPC1 && !!vlPC2 && !!vlPC3, 'VLAN 跨网段场景含 CORE/PC1/PC2/PC3 四台设备');
@@ -808,7 +808,7 @@ function run() {
 
   /* ---------------- 四·M、VLAN 跨交换机跨网段访问（核心三层 + 接入二层，trunk 上联；1.7.9 新增） ---------------- */
   console.log('\n=== 四·M、VLAN 跨交换机跨网段访问（核心三层 + 接入二层）===');
-  loadScenarioByUI(2);
+  loadScenarioByUI(3);
   const xCORE = devByName('CORE'), xACC1 = devByName('ACC1'), xACC2 = devByName('ACC2');
   const xPC1 = devByName('PC1'), xPC2 = devByName('PC2'), xPC3 = devByName('PC3');
   ok(!!xCORE && !!xACC1 && !!xACC2 && !!xPC1 && !!xPC2 && !!xPC3,
@@ -870,11 +870,93 @@ function run() {
       'CORE 上联口改回 access 后 PC1 无法访问 192.168.20.10（trunk 断开，VLAN 到不了网关）');
   }
 
+  /* ---------------- 四·N、STP 环路与端口阻塞（三台交换机三角形环路；1.8.0 新增） ---------------- */
+  console.log('\n=== 四·N、STP 环路与端口阻塞（三台交换机三角形环路）===');
+  loadScenarioByUI(1);
+  const tSW1 = devByName('SW1'), tSW2 = devByName('SW2'), tSW3 = devByName('SW3');
+  const tPC1 = devByName('PC1'), tPC2 = devByName('PC2');
+  ok(!!tSW1 && !!tSW2 && !!tSW3 && !!tPC1 && !!tPC2, 'STP 场景含 SW1 / SW2 / SW3 / PC1 / PC2 五台设备');
+  ok(S.S.devices.length === 5, 'STP 场景含 5 台设备', 'got ' + S.S.devices.length);
+  ok(S.S.links.length === 5, 'STP 场景含 5 条链路（三条交换机互联成环 + 两条 PC 接入）', 'links=' + S.S.links.length);
+
+  if (tSW1 && tSW2 && tSW3 && tPC1 && tPC2) {
+    const sS1 = S.getSession(tSW1.id), sS2 = S.getSession(tSW2.id), sS3 = S.getSession(tSW3.id),
+          sP1 = S.getSession(tPC1.id);
+    Sim.invalidate();
+    const stpOf = function (d, p) { return (Sim.stpState()[d.id] || {})[p] || {}; };
+    const rootName = function () {
+      const rd = Sim.stpRoot(), dd = rd ? S.getDevice(rd) : null;
+      return dd ? (dd.cfg.hostname || dd.name) : String(rd);
+    };
+
+    // 1) 根桥选举：优先级最小者（SW1 = 4096）成为根桥
+    ok(rootName() === 'SW1', 'SW1（优先级 4096）被选为根桥', 'got ' + rootName());
+
+    // 2) 阻塞端口：SW3 连 SW2 的 GE1/0/2 被逻辑阻塞（环路在此处被剪断）
+    ok(stpOf(tSW3, 'GE1/0/2').role === 'ALTE', 'SW3 GE1/0/2 角色为 ALTE（阻塞端口）',
+      JSON.stringify(stpOf(tSW3, 'GE1/0/2')));
+    ok(stpOf(tSW3, 'GE1/0/2').state === 'discarding', 'SW3 GE1/0/2 状态为 DISCARDING');
+    ok(Sim.portUp(tSW3, 'GE1/0/2') === false, 'SW3 GE1/0/2 不转发数据（portUp=false）');
+
+    // 3) 其余端口角色：SW1 两口指定、SW2 一根一指定、SW3 GE1/0/1 为根端口
+    ok(stpOf(tSW1, 'GE1/0/1').role === 'DESI' && stpOf(tSW1, 'GE1/0/2').role === 'DESI',
+      '根桥 SW1 的两个口均为指定端口（DESI）');
+    ok(stpOf(tSW2, 'GE1/0/1').role === 'ROOT' && stpOf(tSW2, 'GE1/0/2').role === 'DESI',
+      'SW2 的 GE1/0/1 为根端口、GE1/0/2 为指定端口');
+    ok(stpOf(tSW3, 'GE1/0/1').role === 'ROOT', 'SW3 的 GE1/0/1 为根端口');
+    ok(stpOf(tSW1, 'GE1/0/1').state === 'forwarding' && stpOf(tSW2, 'GE1/0/2').state === 'forwarding',
+      '未被阻塞的端口均为 forwarding');
+
+    // 4) 环路被剪断后 PC 仍能互通
+    const tPing = E.exec(tPC1, sP1, 'ping 192.168.10.20');
+    ok(!tPing.err && /Reply from 192\.168\.10\.20/.test(tPing.out),
+      'PC1 ping 通 PC2（环路被 STP 剪断，无广播风暴）');
+
+    // 5) display stp brief 能读出端口角色与状态
+    const tBr = E.exec(tSW3, sS3, 'display stp brief');
+    ok(!tBr.err && /ALTE/.test(tBr.out) && /DISCARDING/.test(tBr.out),
+      'display stp brief 中 GE1/0/2 显示 ALTE / DISCARDING');
+
+    // 6) 改优先级 → 根桥与阻塞端口一起迁移（STP 可控性的教学核心）
+    E.exec(tSW3, sS3, 'system-view');
+    E.exec(tSW3, sS3, 'stp root primary');
+    E.exec(tSW3, sS3, 'return');
+    Sim.invalidate();
+    ok(rootName() === 'SW3', 'SW3 执行 stp root primary 后成为根桥', 'got ' + rootName());
+    ok(stpOf(tSW2, 'GE1/0/1').state === 'discarding', '阻塞端口迁移到 SW2 的 GE1/0/1',
+      JSON.stringify(stpOf(tSW2, 'GE1/0/1')));
+
+    // 7) undo stp priority 必须真正恢复（回归：此前只改 cfg.stp.priority，漏了 instances[0].priority）
+    E.exec(tSW3, sS3, 'system-view');
+    const tUndo = E.exec(tSW3, sS3, 'undo stp priority');
+    E.exec(tSW3, sS3, 'return');
+    Sim.invalidate();
+    ok(!tUndo.err, 'undo stp priority 可被识别（不带参数也能匹配）', (tUndo.out || '').split('\n')[0]);
+    ok(tSW3.cfg.stp.priority === 32768 &&
+       (tSW3.cfg.stp.instances[0] || {}).priority === 32768,
+      'undo stp priority 同时恢复 cfg.stp.priority 与 instances[0].priority',
+      'pri=' + tSW3.cfg.stp.priority + ' inst=' + ((tSW3.cfg.stp.instances[0] || {}).priority));
+    ok(rootName() === 'SW1', 'undo 后根桥重新回到 SW1', 'got ' + rootName());
+
+    // 8) 冗余链路故障切换：shutdown 主用链路，原阻塞口自动转为转发
+    E.exec(tSW1, sS1, 'system-view');
+    E.exec(tSW1, sS1, 'interface GigabitEthernet1/0/2');
+    E.exec(tSW1, sS1, 'shutdown');
+    E.exec(tSW1, sS1, 'return');
+    Sim.invalidate();
+    ok(stpOf(tSW3, 'GE1/0/2').role === 'ROOT', 'SW1 GE1/0/2 down 后 SW3 GE1/0/2 变为根端口',
+      JSON.stringify(stpOf(tSW3, 'GE1/0/2')));
+    ok(stpOf(tSW3, 'GE1/0/2').state === 'forwarding', 'SW3 GE1/0/2 由阻塞转为转发');
+    const tPing2 = E.exec(tPC1, sP1, 'ping 192.168.10.20');
+    ok(!tPing2.err && /Reply from 192\.168\.10\.20/.test(tPing2.out),
+      '故障切换后 PC1 仍能 ping 通 PC2（冗余链路生效）');
+  }
+
   /* ---------------- 四·K、ping/tracert 命令模式去歧义（BUG：IPv4 地址同时匹配 <ip> 与 <word>） ---------------- */
   console.log('\n=== 四·K、ping / tracert 命令去歧义 ===');
   // 本小节需要一台"已配置 IP"的设备做源地址（无 IP 的设备 ping 会返回"The source address does not exist."，
   // 拿不到 Ping 头）。原先沿用上一段遗留拓扑，一旦前序场景换了型号或缺 IP 就会失败 —— 改为显式加载。
-  loadScenarioByUI(10);   // IPv6 场景含 MSR36-20 路由器，接口已配置 IPv4/IPv6
+  loadScenarioByUI(11);   // IPv6 场景含 MSR36-20 路由器，接口已配置 IPv4/IPv6
   // 在 system 视图对任意设备执行 ping 命令，不应报歧义错误
   var firstSw = null;
   S.S.devices.forEach(function (d) {
@@ -926,7 +1008,7 @@ function run() {
   console.log('\n=== 六、关于面板与版本管理 ===');
   const AB = (window.H3C && window.H3C.ABOUT) || {};
   ok(AB && typeof AB === 'object', 'H.ABOUT 已挂载到 window.H3C');
-  ok(AB.version === '1.7.9', '当前版本号为 1.7.9', 'got ' + AB.version);
+  ok(AB.version === '1.8.0', '当前版本号为 1.8.0', 'got ' + AB.version);
   ok(AB.contact === 'zyztonorrow@qq.com', '联系方式为 zyztonorrow@qq.com');
   ok(/github\.com/.test(AB.github || ''), '包含 GitHub 仓库地址');
   ok(Array.isArray(AB.changelog) && AB.changelog.length >= 5, '更新日志含 >=5 个版本（1.0.0 起）');
