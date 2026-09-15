@@ -347,6 +347,8 @@
         '在 SW1、SW2 上创建 VLAN 10',
         '把连接 PC 的 GE1/0/2 配置为 access 并加入 VLAN 10',
         '把交换机互联口 GE1/0/1 配置为 trunk，允许所有 VLAN 通过',
+        '进阶一：端口视图下可直接敲 interface GE1/0/2 跳到另一个端口，不必先 quit 回系统视图（VLAN 接口同理）',
+        '进阶二：端口较多时用 int range GE1/0/3 to GE1/0/10 批量配置，提示符变为 [SW1-if-range]，此时 port access vlan 10 一次对 8 个端口生效',
         '在 PC1 上执行 ping 192.168.10.20 验证连通性',
         '用 display vlan、display interface 查看配置与端口状态'
       ],
