@@ -356,7 +356,7 @@
 
   /* ================= 接口视图进入 ================= */
   R({
-    views: ['system', 'interface', 'if-range'], pat: 'interface <ifname>', seq: 'iface',
+    views: ['system', 'interface', 'if-range'], nav: true, pat: 'interface <ifname>', seq: 'iface',
     help: '进入以太网/三层接口视图（接口视图下可直接切换到其它接口）',
     run: function (c) {
       var n = U.ifShort(c.args.ifname);
@@ -367,7 +367,7 @@
     }
   });
   R({
-    views: ['system', 'interface', 'if-range'], pat: 'interface <ifname> to <ifname>', seq: 'iface',
+    views: ['system', 'interface', 'if-range'], nav: true, pat: 'interface <ifname> to <ifname>', seq: 'iface',
     help: '批量进入接口范围视图 (如 GE1/0/1 to GE1/0/10)',
     run: function (c) {
       var spec = U.ifShort(c.args._0) + ' to ' + U.ifShort(c.args._1);
@@ -375,7 +375,7 @@
     }
   });
   R({
-    views: ['system', 'interface', 'if-range'], pat: 'interface vlan-interface <vid>', hidden: true, seq: 'iface',
+    views: ['system', 'interface', 'if-range'], nav: true, pat: 'interface vlan-interface <vid>', hidden: true, seq: 'iface',
     help: '进入 VLAN 接口视图',
     run: function (c) {
       vlanEnsure(c.dev, c.args.vid);
@@ -383,7 +383,7 @@
     }
   });
   R({
-    views: ['system', 'interface', 'if-range'], pat: 'interface bridge-aggregation <int>', hidden: true, seq: 'iface',
+    views: ['system', 'interface', 'if-range'], nav: true, pat: 'interface bridge-aggregation <int>', hidden: true, seq: 'iface',
     help: '进入二三层聚合接口视图',
     run: function (c) {
       var id = c.args.int;
@@ -392,7 +392,7 @@
     }
   });
   R({
-    views: ['system', 'interface', 'if-range'], pat: 'interface route-aggregation <int>', hidden: true, seq: 'iface',
+    views: ['system', 'interface', 'if-range'], nav: true, pat: 'interface route-aggregation <int>', hidden: true, seq: 'iface',
     help: '进入三层聚合接口视图',
     run: function (c) {
       var id = c.args.int;
@@ -401,7 +401,7 @@
     }
   });
   R({
-    views: ['system', 'interface', 'if-range'], pat: 'interface loopback <int>', hidden: true, seq: 'iface',
+    views: ['system', 'interface', 'if-range'], nav: true, pat: 'interface loopback <int>', hidden: true, seq: 'iface',
     help: '进入 LoopBack 接口视图',
     run: function (c) { return enterIface(c.dev, 'Loop' + c.args.int, 'route'); }
   });
@@ -411,12 +411,12 @@
     run: function (c) { return { out: '' }; }
   });
   R({
-    views: ['system', 'interface', 'if-range'], pat: 'interface tunnel <int>', hidden: true, seq: 'iface',
+    views: ['system', 'interface', 'if-range'], nav: true, pat: 'interface tunnel <int>', hidden: true, seq: 'iface',
     help: '进入 Tunnel 接口视图',
     run: function (c) { return enterIface(c.dev, 'Tun' + c.args.int, 'route'); }
   });
   R({
-    views: ['system', 'interface', 'if-range'], pat: 'interface range <text>', seq: 'iface',
+    views: ['system', 'interface', 'if-range'], nav: true, pat: 'interface range <text>', seq: 'iface',
     help: '批量配置接口范围 (如 GE1/0/1 to GE1/0/10)',
     run: function (c) { return enterRange(c.dev, parseRange(c.dev, c.args.text)); }
   });
