@@ -9,7 +9,7 @@
 
 > 《计算机网络设备配置》课程配套教学工具 —— 纯前端、零依赖的 H3C（Comware）风格交换机 / 路由器仿真终端。
 
-[![当前版本](https://img.shields.io/badge/version-1.7.9-blue)](CHANGELOG.md)
+[![当前版本](https://img.shields.io/badge/version-1.8.0-blue)](CHANGELOG.md)
 [![许可](https://img.shields.io/badge/license-教学用途-green)](LICENSE)
 
 ### 简介
@@ -38,6 +38,7 @@ H3C 网络仿真实验室是一个**纯前端、无构建步骤**的网络设备
 
 | 版本 | 日期 | 要点 |
 | --- | --- | --- |
+| 1.8.0 | 2026-09-15 | 新增「STP 环路与端口阻塞实验」（三台交换机三角形环路）+ 修复 undo stp priority |  
 | 1.7.9 | 2026-09-15 | 新增「VLAN 跨交换机跨网段访问实验」（核心三层 + 接入二层）+ 修复三层路径穿越二层交换机 / STP 根端口 |  
 | 1.7.8 | 2026-09-14 | 新增「VLAN 跨网段访问（三层交换）实验」场景 |
 | 1.7.7 | 2026-09-12 | 选中高亮增强 + 设备库悬浮窗补充简介与使用场景 |
@@ -75,7 +76,7 @@ H3C 网络仿真实验室是一个**纯前端、无构建步骤**的网络设备
 
 > A teaching tool for the *Computer Network Device Configuration* course — a pure-frontend, zero-dependency H3C (Comware) style switch / router simulation terminal.
 
-[![Version](https://img.shields.io/badge/version-1.7.9-blue)](CHANGELOG.md)
+[![Version](https://img.shields.io/badge/version-1.8.0-blue)](CHANGELOG.md)
 [![License](https://img.shields.io/badge/license-Educational-green)](LICENSE)
 
 ### Introduction
@@ -105,6 +106,7 @@ Iterative versioning starts at **1.0.0**, summarized per day; rolled-back change
 
 | Version | Date | Highlights |
 | --- | --- | --- |
+| 1.8.0 | 2026-09-15 | New lab: STP loop & port blocking (triangle topology); fix undo stp priority |  
 | 1.7.9 | 2026-09-15 | New lab: inter-VLAN routing across switches (L3 core + L2 access, trunk uplink); fix L3 path through L2 switch & STP root port |  
 | 1.7.8 | 2026-09-14 | New lab scenario: inter-VLAN routing via Layer-3 switch (Vlan-interface gateway) |
 | 1.7.7 | 2026-09-12 | Selection highlight + palette tooltip adds intro & use cases |
