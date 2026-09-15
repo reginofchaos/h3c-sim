@@ -37,6 +37,26 @@
     var f = ensureIface(dev, shortName, kind);
     return { enter: { view: 'interface', arg: shortName } };
   }
+  /* 进入接口范围视图（interface range）：arg 保留首个接口名以兼容取接口的工具函数，
+     list 保存完整接口列表，引擎据此把后续命令对每个接口各执行一遍。 */
+  function enterRange(dev, list) {
+    if (!list || !list.length) {
+      return { out: '                       ^\nError: Wrong parameter found at \'^\' position.', err: true };
+    }
+    var names = [];
+    for (var i = 0; i < list.length; i++) {
+      var n = U.ifShort(list[i]);
+      ensureIface(dev, n, /^(VLAN|Loop|RAGG|Tun)/.test(n) ? 'route' : 'bridge');
+      names.push(n);
+    }
+    return { enter: { view: 'if-range', arg: names[0], list: names } };
+  }
+  /* 解析接口范围参数（"GE1/0/1 to GE1/0/10" / "g1/0/1,g1/0/5" / 带空格的全名写法） */
+  function parseRange(dev, spec) {
+    var s = U.normalizeIfSpec ? U.normalizeIfSpec(spec) : String(spec || '').trim();
+    return U.expandIfRange(dev, 'GE', s) || U.expandIfRange(dev, '', s);
+  }
+
   function isSwitch(c) { var t = c.dev.type; return t === 'switch'; }
   function isRouter(c) { var t = c.dev.type; return t === 'router' || t === 'firewall'; }
   function needL3(c) { return c.dev.l3 !== false; }
@@ -336,8 +356,8 @@
 
   /* ================= 接口视图进入 ================= */
   R({
-    views: ['system'], pat: 'interface <ifname>', seq: 'iface',
-    help: '进入以太网/三层接口视图',
+    views: ['system', 'interface', 'if-range'], pat: 'interface <ifname>', seq: 'iface',
+    help: '进入以太网/三层接口视图（接口视图下可直接切换到其它接口）',
     run: function (c) {
       var n = U.ifShort(c.args.ifname);
       if (!c.dev.cfg.ifaces[n] && !/^(Vlan-interface|LoopBack|Bridge-Aggregation|Route-Aggregation|Tunnel)/.test(n)) {
@@ -347,15 +367,15 @@
     }
   });
   R({
-    views: ['system'], pat: 'interface <ifname> to <ifname>', hidden: true, seq: 'iface',
-    help: '批量进入接口视图',
+    views: ['system', 'interface', 'if-range'], pat: 'interface <ifname> to <ifname>', seq: 'iface',
+    help: '批量进入接口范围视图 (如 GE1/0/1 to GE1/0/10)',
     run: function (c) {
-      var a = U.ifShort(c.args.ifname);
-      return enterIface(c.dev, a, 'bridge');
+      var spec = U.ifShort(c.args._0) + ' to ' + U.ifShort(c.args._1);
+      return enterRange(c.dev, parseRange(c.dev, spec));
     }
   });
   R({
-    views: ['system'], pat: 'interface vlan-interface <vid>', hidden: true, seq: 'iface',
+    views: ['system', 'interface', 'if-range'], pat: 'interface vlan-interface <vid>', hidden: true, seq: 'iface',
     help: '进入 VLAN 接口视图',
     run: function (c) {
       vlanEnsure(c.dev, c.args.vid);
@@ -363,7 +383,7 @@
     }
   });
   R({
-    views: ['system'], pat: 'interface bridge-aggregation <int>', hidden: true, seq: 'iface',
+    views: ['system', 'interface', 'if-range'], pat: 'interface bridge-aggregation <int>', hidden: true, seq: 'iface',
     help: '进入二三层聚合接口视图',
     run: function (c) {
       var id = c.args.int;
@@ -372,7 +392,7 @@
     }
   });
   R({
-    views: ['system'], pat: 'interface route-aggregation <int>', hidden: true, seq: 'iface',
+    views: ['system', 'interface', 'if-range'], pat: 'interface route-aggregation <int>', hidden: true, seq: 'iface',
     help: '进入三层聚合接口视图',
     run: function (c) {
       var id = c.args.int;
@@ -381,7 +401,7 @@
     }
   });
   R({
-    views: ['system'], pat: 'interface loopback <int>', hidden: true, seq: 'iface',
+    views: ['system', 'interface', 'if-range'], pat: 'interface loopback <int>', hidden: true, seq: 'iface',
     help: '进入 LoopBack 接口视图',
     run: function (c) { return enterIface(c.dev, 'Loop' + c.args.int, 'route'); }
   });
@@ -391,20 +411,14 @@
     run: function (c) { return { out: '' }; }
   });
   R({
-    views: ['system'], pat: 'interface tunnel <int>', hidden: true, seq: 'iface',
+    views: ['system', 'interface', 'if-range'], pat: 'interface tunnel <int>', hidden: true, seq: 'iface',
     help: '进入 Tunnel 接口视图',
     run: function (c) { return enterIface(c.dev, 'Tun' + c.args.int, 'route'); }
   });
   R({
-    views: ['system'], pat: 'interface range <text>', hidden: true, seq: 'iface',
-    help: '批量配置接口范围 (如 1/0/1 to 1/0/10)',
-    run: function (c) {
-      var spec = c.args.text;
-      var list = U.expandIfRange(c.dev, 'GE', spec) || U.expandIfRange(c.dev, '', spec);
-      if (!list) return { out: 'Error: Wrong parameter found at \'^\' position.', err: true };
-      c.sess.batchIfaces = list;
-      return { out: 'Info: ' + list.length + ' interface(s) selected, commands will be applied to all of them.', refresh: false };
-    }
+    views: ['system', 'interface', 'if-range'], pat: 'interface range <text>', seq: 'iface',
+    help: '批量配置接口范围 (如 GE1/0/1 to GE1/0/10)',
+    run: function (c) { return enterRange(c.dev, parseRange(c.dev, c.args.text)); }
   });
 
   /* 接口视图下的通用配置 */
