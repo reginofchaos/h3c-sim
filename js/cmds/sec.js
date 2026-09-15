@@ -5,7 +5,7 @@
 
   /* ============ 本地用户与 AAA ============ */
   R({
-    views: ['system'], pat: 'local-user <word> class manage', seq: 'aaa',
+    views: ['system', 'interface', 'if-range'], nav: true, pat: 'local-user <word> class manage', seq: 'aaa',
     help: '创建管理类本地用户并进入用户视图',
     run: function (c) {
       var u = c.dev.cfg.users.filter(function (x) { return x.name === c.args._1; })[0];
@@ -18,7 +18,7 @@
     }
   });
   R({
-    views: ['system'], pat: 'local-user <word>', hidden: true, seq: 'aaa',
+    views: ['system', 'interface', 'if-range'], nav: true, pat: 'local-user <word>', hidden: true, seq: 'aaa',
     help: '创建本地用户',
     run: function (c) {
       var u = c.dev.cfg.users.filter(function (x) { return x.name === c.args.word; })[0];
@@ -98,44 +98,44 @@
 
   /* ============ 用户线（Console / VTY） ============ */
   R({
-    views: ['system'], pat: 'user-interface vty <int>', seq: 'line',
+    views: ['system', 'interface', 'if-range'], nav: true, pat: 'user-interface vty <int>', seq: 'line',
     help: '进入单个 VTY 用户线视图',
     run: function (c) { return { enter: { view: 'line', arg: 'vty' + c.args.int } }; }
   });
   R({
-    views: ['system'], pat: 'user-interface vty <int> <int>', seq: 'line',
+    views: ['system', 'interface', 'if-range'], nav: true, pat: 'user-interface vty <int> <int>', seq: 'line',
     help: '进入 VTY 用户线范围视图（如 vty 0 4）',
     run: function (c) { return { enter: { view: 'line', arg: 'vty' + c.args._0 + '-' + c.args._1 } }; }
   });
   R({
-    views: ['system'], pat: 'user-interface console <int>', seq: 'line',
+    views: ['system', 'interface', 'if-range'], nav: true, pat: 'user-interface console <int>', seq: 'line',
     help: '进入 Console 用户线视图',
     run: function (c) { return { enter: { view: 'line', arg: 'con' + c.args.int } }; }
   });
   R({
-    views: ['system'], pat: 'user-interface aux <int>', seq: 'line',
+    views: ['system', 'interface', 'if-range'], nav: true, pat: 'user-interface aux <int>', seq: 'line',
     help: '进入 AUX 用户线视图',
     run: function (c) { return { enter: { view: 'line', arg: 'aux' + c.args.int } }; }
   });
 
   /* 兼容经典 Comware 的 line 写法：Config.render 导出与真实设备备份均使用此格式 */
   R({
-    views: ['system'], pat: 'line vty <int>', seq: 'line',
+    views: ['system', 'interface', 'if-range'], nav: true, pat: 'line vty <int>', seq: 'line',
     help: '进入单个 VTY 用户线视图（经典写法）',
     run: function (c) { return { enter: { view: 'line', arg: 'vty' + c.args.int } }; }
   });
   R({
-    views: ['system'], pat: 'line vty <int> <int>', seq: 'line',
+    views: ['system', 'interface', 'if-range'], nav: true, pat: 'line vty <int> <int>', seq: 'line',
     help: '进入 VTY 用户线范围视图（经典写法，如 line vty 0 4）',
     run: function (c) { return { enter: { view: 'line', arg: 'vty' + c.args._0 + '-' + c.args._1 } }; }
   });
   R({
-    views: ['system'], pat: 'line con <int>', seq: 'line',
+    views: ['system', 'interface', 'if-range'], nav: true, pat: 'line con <int>', seq: 'line',
     help: '进入 Console 用户线视图（经典写法）',
     run: function (c) { return { enter: { view: 'line', arg: 'con' + c.args.int } }; }
   });
   R({
-    views: ['system'], pat: 'line aux <int>', seq: 'line',
+    views: ['system', 'interface', 'if-range'], nav: true, pat: 'line aux <int>', seq: 'line',
     help: '进入 AUX 用户线视图（经典写法）',
     run: function (c) { return { enter: { view: 'line', arg: 'aux' + c.args.int } }; }
   });
