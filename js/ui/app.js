@@ -359,6 +359,68 @@
     },
     {
       id: 1,
+      name: 'STP 环路与端口阻塞实验',
+      devices: [
+        { model: 'S5130-28S-EI', name: 'SW1', x: 270, y: 60 },
+        { model: 'S5130-28S-EI', name: 'SW2', x: 90, y: 300 },
+        { model: 'S5130-28S-EI', name: 'SW3', x: 450, y: 300 },
+        { model: 'PC', name: 'PC1', x: 90, y: 520 },
+        { model: 'PC', name: 'PC2', x: 450, y: 520 }
+      ],
+      links: [
+        ['SW1', 'GE1/0/1', 'SW2', 'GE1/0/1'],
+        ['SW1', 'GE1/0/2', 'SW3', 'GE1/0/1'],
+        ['SW2', 'GE1/0/2', 'SW3', 'GE1/0/2'],
+        ['PC1', 'GE0/1', 'SW2', 'GE1/0/3'],
+        ['PC2', 'GE0/1', 'SW3', 'GE1/0/3']
+      ],
+      config: [
+        { dev: 'PC1', cmds: ['set ip 192.168.10.10 255.255.255.0'] },
+        { dev: 'PC2', cmds: ['set ip 192.168.10.20 255.255.255.0'] },
+        { dev: 'SW1', cmds: ['sysname SW1', 'system-view',
+          'vlan 10', 'quit',
+          'stp mode mstp', 'stp priority 4096',
+          'interface GigabitEthernet1/0/1', 'port link-type trunk', 'port trunk permit vlan all', 'quit',
+          'interface GigabitEthernet1/0/2', 'port link-type trunk', 'port trunk permit vlan all', 'return'] },
+        { dev: 'SW2', cmds: ['sysname SW2', 'system-view',
+          'vlan 10', 'quit',
+          'stp mode mstp', 'stp priority 8192',
+          'interface GigabitEthernet1/0/1', 'port link-type trunk', 'port trunk permit vlan all', 'quit',
+          'interface GigabitEthernet1/0/2', 'port link-type trunk', 'port trunk permit vlan all', 'quit',
+          'interface GigabitEthernet1/0/3', 'port link-type access', 'port access vlan 10', 'return'] },
+        { dev: 'SW3', cmds: ['sysname SW3', 'system-view',
+          'vlan 10', 'quit',
+          'stp mode mstp',
+          'interface GigabitEthernet1/0/1', 'port link-type trunk', 'port trunk permit vlan all', 'quit',
+          'interface GigabitEthernet1/0/2', 'port link-type trunk', 'port trunk permit vlan all', 'quit',
+          'interface GigabitEthernet1/0/3', 'port link-type access', 'port access vlan 10', 'return'] }
+      ],
+      goal: [
+        '理解冗余链路为什么会形成二层环路：广播帧会在环路里无限循环，最终演变成广播风暴',
+        '掌握 STP 消除环路的思路：不是断开物理线路，而是在逻辑上阻塞（DISCARDING）一个端口，把环剪成树',
+        '掌握端口角色的选举依据：先选根桥（优先级最小者），再为每台非根桥选根端口，最后每段链路选指定端口，剩下的那个口被阻塞',
+        '体会 STP 的可控性：调整交换机优先级即可改变根桥与阻塞端口的位置'
+      ],
+      steps: [
+        '观察拓扑：SW1、SW2、SW3 两两互联形成三角形物理环路，PC1 接在 SW2 上，PC2 接在 SW3 上',
+        '在三台交换机上创建 VLAN 10；把交换机互联口配成 trunk 并允许所有 VLAN 通过，把接 PC 的口配成 access 加入 VLAN 10',
+        '确认 STP 默认已开启（stp mode mstp），用 display stp 与 display stp brief 查看根桥与各端口角色',
+        '把 SW1 的优先级设为 4096（stp priority 4096）、SW2 设为 8192，让 SW1 成为根桥',
+        '用 display stp brief 找出被阻塞的端口：SW3 连接 SW2 的 GE1/0/2 应为 ALTE / DISCARDING（拓扑上指示灯为橙色）',
+        '在 PC1 上 ping 192.168.10.20——环路已被 STP 剪断，流量只能走 SW2 → SW1 → SW3 这条无环路径',
+        '改优先级观察迁移：在 SW3 上执行 stp root primary，再次 display stp brief，阻塞端口应转移到 SW2 的 GE1/0/1',
+        '恢复配置后 shutdown SW1 的 GE1/0/2，观察原本阻塞的 SW3 GE1/0/2 自动转为转发，PC1 与 PC2 仍然互通'
+      ],
+      expected: [
+        '三台交换机中优先级最小的 SW1（4096）成为根桥，display stp 中 Root ID 即为 SW1',
+        'SW3 的 GE1/0/2 为 ALTE / DISCARDING（被阻塞），SW1 的两个口与 SW2 的两个口均为 forwarding',
+        'PC1 能 ping 通 PC2（192.168.10.20）——环路被 STP 逻辑断开，不存在广播风暴',
+        '在 SW3 上执行 stp root primary 后根桥变为 SW3，阻塞端口迁移到 SW2 的 GE1/0/1',
+        'shutdown SW1 的 GE1/0/2 后，原阻塞端口 SW3 GE1/0/2 自动转为转发，PC1 与 PC2 仍能互通（冗余链路生效）'
+      ]
+    },
+    {
+      id: 2,
       name: 'VLAN 跨网段访问（三层交换）实验',
       devices: [
         { model: 'S5560X-54C-EI', name: 'CORE', x: 250, y: 60 },
@@ -408,7 +470,7 @@
       ]
     },
     {
-      id: 2,
+      id: 3,
       name: 'VLAN 跨交换机跨网段访问实验',
       devices: [
         { model: 'S5560X-54C-EI', name: 'CORE', x: 300, y: 60 },
@@ -780,7 +842,7 @@
       ]
     },
     {
-      id: 10,
+      id: 11,
       name: 'IPv6 双栈端到端转发实验',
       devices: [
         { model: 'PC', name: 'PC1', x: 110, y: 360 },
