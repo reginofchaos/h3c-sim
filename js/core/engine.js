@@ -8,6 +8,7 @@
     user: { parent: null },
     system: { parent: 'user' },
     interface: { parent: 'system' },
+    'if-range': { parent: 'system' },
     vlan: { parent: 'system' },
     ospf: { parent: 'system' },
     'ospf-area': { parent: 'ospf' },
@@ -91,9 +92,10 @@
     return kw.indexOf(tok) === 0;
   }
 
-  /* allowTrailingVars: 允许省略尾部的变量参数（仅用于 undo 场景）。
-     真机上 `undo stp priority`、`undo ospf cost` 这类命令可以不带参数，
-     而模式语法没有"可选变量"，故在严格匹配全部失败时用它兜底。 */
+  /* allowTrailingVars: 允许省略尾部的必选参数（仅用于 undo 场景）。
+     真机上 `undo stp priority`（变量）、`undo port link-type`（必选字面量）
+     这类命令都可以不带参数，而模式语法没有"可选变量/可选字面量"，
+     故在严格匹配全部失败时用它兜底。 */
   function matchTokens(matcher, tokens, start, dev, allowTrailingVars) {
     var pos = start, args = {}, score = 0, seq = 0;
     for (var i = 0; i < matcher.length; i++) {
@@ -101,7 +103,7 @@
       var tok = tokens[pos];
       if (tok === undefined) {
         if (m.type === 'opt') continue;
-        if (allowTrailingVars && m.type === 'var') continue;
+        if (allowTrailingVars && (m.type === 'var' || m.type === 'alt')) continue;
         return null;
       }
       if (m.type === 'kw') {
@@ -170,6 +172,9 @@
 
   function viewAllows(cmd, view) {
     if (cmd.global) return true;
+    /* 接口范围视图（interface range）复用 interface 视图下的全部命令，
+       这样几十条接口级命令无需逐个改造即可在 if-range 视图下生效。 */
+    if (view === 'if-range' && cmd.views.indexOf('interface') >= 0) return true;
     return cmd.views.indexOf(view) >= 0 || cmd.views.indexOf('*') >= 0;
   }
 
@@ -331,6 +336,38 @@
     return { type: 'none' };
   }
 
+  /* 在 if-range 视图下把一条命令对范围内每个接口各执行一次。
+     输出去重合并；只有全部接口都失败才算整条命令失败。 */
+  function runOnRange(best, ctx, list, undo) {
+    var outs = [], errs = 0, last = null;
+    for (var i = 0; i < list.length; i++) {
+      var sub = {
+        dev: ctx.dev, sess: ctx.sess, args: ctx.args, raw: ctx.raw, tokens: ctx.tokens,
+        undo: undo, view: { view: 'interface', arg: list[i] }, H: ctx.H, U: ctx.U, S: ctx.S
+      };
+      var rr;
+      try {
+        if (undo && best.cmd.undoFn) rr = best.cmd.undoFn(sub);
+        else rr = best.cmd.run(sub);
+      } catch (e) {
+        rr = { out: 'Error: ' + (e && e.message ? e.message : e), err: true };
+      }
+      rr = normOut(rr);
+      last = rr;
+      var txt = rr.out == null ? '' : (Array.isArray(rr.out) ? rr.out.join('\n') : String(rr.out));
+      if (rr.err) {
+        errs++;
+        if (txt && outs.indexOf(txt) < 0) outs.push(txt);
+      } else if (txt && outs.indexOf(txt) < 0) {
+        outs.push(txt);
+      }
+    }
+    if (errs && errs === list.length) return { out: outs.join('\n'), err: true };
+    /* 视图变更类结果（quit / return 等）只取最后一次，避免重复出栈 */
+    if (last && (last.enter || last.exit || last.toUser || last.toSystem)) return last;
+    return { out: outs.join('\n'), err: !!errs };
+  }
+
   /* ---------- 执行 ---------- */
   function exec(dev, sess, line) {
     line = String(line || '').replace(/^\s+/, '');
@@ -361,15 +398,32 @@
         dev: dev, sess: sess, args: best.args, raw: line, tokens: tokens,
         undo: undo, view: curView(sess), H: H, U: U, S: H.State
       };
+      /* 接口范围视图（interface range）：同一条命令对范围内每个接口各执行一遍。
+         做法是为每个接口临时构造一个 interface 视图上下文，既有命令零改造即可批量生效。 */
+      var vTop = ctx.view;
+      var rangeList = (vTop.view === 'if-range' && vTop.list && vTop.list.length && !/^interface /.test(best.cmd.pat))
+        ? vTop.list : null;
       var r;
-      try {
-        if (undo && best.cmd.undoFn) r = best.cmd.undoFn(ctx);
-        else r = best.cmd.run(ctx);
-      } catch (e) {
-        return { out: 'Error: ' + (e && e.message ? e.message : e), err: true };
+      if (rangeList) {
+        r = runOnRange(best, ctx, rangeList, undo);
+      } else {
+        try {
+          if (undo && best.cmd.undoFn) r = best.cmd.undoFn(ctx);
+          else r = best.cmd.run(ctx);
+        } catch (e) {
+          return { out: 'Error: ' + (e && e.message ? e.message : e), err: true };
+        }
+        r = normOut(r);
       }
-      r = normOut(r);
-      if (r.enter) sess.stack.push(r.enter);
+      if (r.enter) {
+        var topV = sess.stack[sess.stack.length - 1];
+        /* 接口视图之间可以直接跳转（真机行为）：替换栈顶而不是继续压栈，
+           这样连续 int GE1/0/1 -> int GE1/0/2 只需一次 quit 即可回到系统视图。 */
+        if ((r.enter.view === 'interface' || r.enter.view === 'if-range') &&
+            topV && (topV.view === 'interface' || topV.view === 'if-range')) {
+          sess.stack[sess.stack.length - 1] = r.enter;
+        } else sess.stack.push(r.enter);
+      }
       if (r.exit) { if (sess.stack.length > 1) sess.stack.pop(); }
       if (r.toUser) sess.stack = [{ view: 'user', arg: null }];
       if (r.toSystem) sess.stack = [{ view: 'user', arg: null }, { view: 'system', arg: null }];
@@ -411,6 +465,7 @@
       case 'user': return '<' + nm + '>';
       case 'system': return '[' + nm + ']';
       case 'interface': return '[' + nm + '-' + H.U.ifShort(v.arg) + ']';
+      case 'if-range': return '[' + nm + '-if-range]';
       case 'vlan': return '[' + nm + '-vlan' + v.arg + ']';
       case 'ospf': return '[' + nm + '-ospf-' + v.arg + ']';
       case 'ospf-area': return '[' + nm + '-ospf-' + v.arg.p + '-area-' + v.arg.a + ']';
