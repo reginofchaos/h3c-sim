@@ -217,7 +217,15 @@
       c.dev.cfg.stp.instances[0].priority = p;
       return { out: '' };
     },
-    undo: function (c) { c.dev.cfg.stp.priority = 32768; return { out: '' }; }
+    /* undo 必须同时恢复 instances[0].priority —— bridgeId() 读的是实例优先级，
+       只改 cfg.stp.priority 的话 undo 后设备仍会被当成根桥（与 stp priority 的写入不对称） */
+    undo: function (c) {
+      c.dev.cfg.stp.priority = 32768;
+      c.dev.cfg.stp.instances = c.dev.cfg.stp.instances || {};
+      c.dev.cfg.stp.instances[0] = c.dev.cfg.stp.instances[0] || { vlans: [1] };
+      c.dev.cfg.stp.instances[0].priority = 32768;
+      return { out: '' };
+    }
   });
   R({
     views: ['system'], pat: 'stp instance <int> priority <int>', seq: 'stp',
