@@ -267,6 +267,40 @@ window.H3C = window.H3C || {};
   /* 输入: "1/0/1 to 1/0/5"、"1/0/1,1/0/3-1/0/6"、"gigabitethernet1/0/3"、"GE1/0/3" -> [接口全名]
      接受三种写法：① 短名+编号 "1/0/3"（自动补 prefix）② 短名 "GE1/0/3" ③ 全名 "GigabitEthernet1/0/3"（大小写不敏感）。
      同时识别 range 写法 "A-B" / "A to B"。 */
+  /* 规范化 interface range 的参数写法：
+       "GigabitEthernet 1/0/1 to GigabitEthernet 1/0/10" -> "GigabitEthernet1/0/1 to GigabitEthernet1/0/10"
+       "g1/0/1 to g1/0/5 g1/0/8"                         -> "g1/0/1 to g1/0/5,g1/0/8"
+     主要处理"类型与编号之间有空格"以及"空格分隔多个接口"两种真机常见写法。 */
+  U.normalizeIfSpec = function (spec) {
+    var s = String(spec == null ? '' : spec).trim();
+    if (!s) return '';
+    var items = [], cur = '', op = ',';
+    // op 记录"下一个接口与前一个接口之间的连接符"；cur 为空时 flush 不改变 op
+    function flush() { if (cur) { items.push({ v: cur, op: op }); cur = ''; op = ','; } }
+    var toks = s.split(/\s+/);
+    for (var i = 0; i < toks.length; i++) {
+      var t = toks[i];
+      if (!t) continue;
+      if (t.toLowerCase() === 'to') { flush(); op = 'to'; continue; }
+      var segs = t.split(',');
+      for (var k = 0; k < segs.length; k++) {
+        var sg = segs[k];
+        if (!sg) { flush(); continue; }                                            // "1/0/1, 1/0/3"
+        if (cur && /^[a-zA-Z][a-zA-Z\-]*$/.test(cur) && /^\d/.test(sg)) { cur += sg; continue; } // 类型 + 编号
+        flush();
+        cur = sg;
+        if (k < segs.length - 1) flush();                                          // 逗号粘连
+      }
+    }
+    flush();
+    var out = '';
+    for (var j = 0; j < items.length; j++) {
+      if (!out) out = items[j].v;
+      else out += (items[j].op === 'to' ? ' to ' : ',') + items[j].v;
+    }
+    return out;
+  };
+
   U.expandIfRange = function (dev, prefix, spec) {
     function normOne(s) {
       // ① 先按完整接口名解析（GE1/0/3 / GigabitEthernet1/0/3 / gi1/0/3 等都返回规范全名）
@@ -305,8 +339,10 @@ window.H3C = window.H3C || {};
   U.parseVlanList = function (s, max) {
     max = max || 4094;
     var out = [];
-    if (String(s).toLowerCase() === 'all') { for (var i = 1; i <= max; i++) out.push(i); return out; }
-    var parts = String(s).split(',');
+    var raw = String(s).trim();
+    if (raw.toLowerCase() === 'all') { for (var i = 1; i <= max; i++) out.push(i); return out; }
+    // 真机允许 "10 20" 这种空格分隔写法，先统一成逗号（"10 to 20" / "10-20" 保持区间语义）
+    var parts = raw.replace(/\s*(?:to|-)\s*/gi, '-').replace(/[\s,]+/g, ',').split(',');
     for (var k = 0; k < parts.length; k++) {
       var p = parts[k].trim(); if (!p) continue;
       var m = p.match(/^(\d+)\s*(?:to|-)\s*(\d+)$/);
