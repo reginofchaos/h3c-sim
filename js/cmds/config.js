@@ -541,6 +541,16 @@
         o.push('#');
         return o.join('\n');
       }
+      case 'if-range': {
+        var list = view.list && view.list.length ? view.list : [view.arg];
+        for (var ri = 0; ri < list.length; ri++) {
+          var fr = cfg.ifaces[list[ri]];
+          if (!fr) continue;
+          o.push('interface ' + fullIf(list[ri]));
+          renderIfaceBody(dev, list[ri], fr, o);
+        }
+        return o.length ? o.join('\n') : '#';
+      }
       case 'vlan': {
         var v = cfg.vlans[view.arg];
         o.push('#');
