@@ -83,7 +83,7 @@
 
   /* ============ 创建 ACL ============ */
   R({
-    views: ['system'], pat: 'acl basic <int>', seq: 'acl',
+    views: ['system', 'interface', 'if-range'], nav: true, pat: 'acl basic <int>', seq: 'acl',
     help: '创建基本 ACL (2000-2999) 并进入 ACL 视图',
     run: function (c) {
       var id = parseInt(c.args.int, 10);
@@ -93,7 +93,7 @@
     }
   });
   R({
-    views: ['system'], pat: 'acl advanced <int>', seq: 'acl',
+    views: ['system', 'interface', 'if-range'], nav: true, pat: 'acl advanced <int>', seq: 'acl',
     help: '创建高级 ACL (3000-3999) 并进入 ACL 视图',
     run: function (c) {
       var id = parseInt(c.args.int, 10);
@@ -103,7 +103,7 @@
     }
   });
   R({
-    views: ['system'], pat: 'acl mac <int>', seq: 'acl',
+    views: ['system', 'interface', 'if-range'], nav: true, pat: 'acl mac <int>', seq: 'acl',
     help: '创建二层 ACL (4000-4999)',
     run: function (c) {
       var id = parseInt(c.args.int, 10);
@@ -113,7 +113,7 @@
     }
   });
   R({
-    views: ['system'], pat: 'acl number <int>', seq: 'acl',
+    views: ['system', 'interface', 'if-range'], nav: true, pat: 'acl number <int>', seq: 'acl',
     help: '按编号创建 ACL 并进入 ACL 视图',
     run: function (c) {
       var id = parseInt(c.args.int, 10), t = aclTypeOf(id);
@@ -123,7 +123,7 @@
     }
   });
   R({
-    views: ['system'], pat: 'acl name <word> +basic|advanced|mac', hidden: true, seq: 'acl',
+    views: ['system', 'interface', 'if-range'], nav: true, pat: 'acl name <word> +basic|advanced|mac', hidden: true, seq: 'acl',
     help: '按名称创建 ACL',
     run: function (c) {
       var id = Object.keys(c.dev.cfg.acl).length ? Math.max.apply(null, Object.keys(c.dev.cfg.acl).map(Number)) + 1 : 2000;
