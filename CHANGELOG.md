@@ -2,6 +2,12 @@
 
 > 迭代版本号自 **1.0.0** 起，按日汇总版本跨度；回滚的修改不记录。
 
+## [1.9.1] — 2026-09-15 · 视图跳转修复：任意配置视图可直达 vlan/ospf/acl 等子视图
+- **修复核心 bug**：接口视图下输入 `vlan 10` 报 `Unrecognized command found at '^' position.` 的问题。视图导航命令（`vlan` / `interface` / `ospf` / `rip` / `bgp` / `isis` / `acl` / `local-user` / `user-interface` / `line` / `dhcp server ip-pool` / `stp region-configuration` / `qos policy` / `traffic classifier` / `traffic behavior` 等共 **36 条**）现在可在**任意配置视图**下直接执行，与真机 Comware 行为一致
+- **视图栈语义对齐真机**：从非系统视图（接口 / VLAN / 深层子视图）跳转系统级子视图时，整个视图栈重置为 `用户→系统→新视图`，一次 `quit` 即回到系统视图；OSPF 区域等父子嵌套视图仍保持压栈语义
+- **引擎机制**：新增 nav（导航命令）标记，导航命令在用户视图以外的任何视图可用；用户视图下仍需先 `system-view`（与真机一致）
+- 回归测试 `verify.js` 达 **448** 项断言全通过（新增 22 项视图跳转断言）
+
 ## [1.9.0] — 2026-09-15 · 接口视图可直切 + `interface range` 批量配置
 - **接口视图之间可以直接跳转**：在 `GE1/0/1` 端口视图下直接敲 `interface GE1/0/2` 就能切到 `GE1/0/2`，VLAN 接口、聚合口、LoopBack 同理，**不必先 `quit` 回系统视图**。切换是替换视图栈顶而不是继续压栈，所以仍然只要一次 `quit` 就能回到系统视图
 - **新增 `interface range` 批量配置**（含缩写 `int range` / `int ran`）：进入后**提示符变为 `[设备名-if-range]`**，后续配置对范围内所有端口同时生效
