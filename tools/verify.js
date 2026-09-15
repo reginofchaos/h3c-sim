@@ -1112,7 +1112,7 @@ function run() {
   console.log('\n=== 六、关于面板与版本管理 ===');
   const AB = (window.H3C && window.H3C.ABOUT) || {};
   ok(AB && typeof AB === 'object', 'H.ABOUT 已挂载到 window.H3C');
-  ok(AB.version === '1.9.0', '当前版本号为 1.9.0', 'got ' + AB.version);
+  ok(AB.version === '1.9.1', '当前版本号为 1.9.1', 'got ' + AB.version);
   ok(AB.contact === 'zyztonorrow@qq.com', '联系方式为 zyztonorrow@qq.com');
   ok(/github\.com/.test(AB.github || ''), '包含 GitHub 仓库地址');
   ok(Array.isArray(AB.changelog) && AB.changelog.length >= 5, '更新日志含 >=5 个版本（1.0.0 起）');
@@ -1718,6 +1718,90 @@ function run() {
     ok(hasUse, 'pal-tip 含常用使用场景（usage）', 'mid=' + pmid);
   } catch (e14) {
     ok(false, '悬浮交互增强（1.7.6）断言', e14.message + ' | ' + ((e14.stack || '').split('\n')[1] || ''));
+  }
+
+  /* ================= 十五、视图跳转（1.8.1：nav 导航命令 + 视图栈替换） ================= */
+  try {
+    S.clearAll();
+    const vjDev = S.addDevice('S5130-28S-EI', 'VJSW', 100, 100);
+    const vjSess = () => S.getSession(vjDev.id);
+    const vX = (cmd) => E.exec(vjDev, vjSess(), cmd);
+    const vP = () => E.promptFor(vjDev, vjSess());
+
+    // ① 系统视图 -> vlan 视图（原有路径回归）
+    vX('system-view');
+    ok(vP() === '[VJSW]', '① system-view 提示符', vP());
+    vX('vlan 10');
+    ok(vP() === '[VJSW-vlan10]', '① 系统视图 vlan 10 进入 VLAN 视图', vP());
+    vX('quit');
+    ok(vP() === '[VJSW]', '① quit 回到系统视图', vP());
+
+    // ② 接口视图 -> vlan 视图（1.8.1 修复的核心 bug）
+    vX('interface GE1/0/1');
+    ok(vP() === '[VJSW-GE1/0/1]', '② 进入接口视图', vP());
+    let vjR = vX('vlan 10');
+    ok(!vjR.err, '② 接口视图下 vlan 10 不再报 Unrecognized command', JSON.stringify(vjR.out));
+    ok(vP() === '[VJSW-vlan10]', '② 接口视图跳转到 VLAN 视图', vP());
+    vX('quit');
+    ok(vP() === '[VJSW]', '② vlan 视图 quit 直接回系统视图（替换而非压栈）', vP());
+
+    // ③ 接口视图互跳保持替换语义
+    vX('interface GE1/0/2');
+    vX('interface GE1/0/3');
+    ok(vP() === '[VJSW-GE1/0/3]', '③ 接口视图间互跳替换栈顶', vP());
+    vX('quit');
+    ok(vP() === '[VJSW]', '③ 互跳后一次 quit 回系统视图', vP());
+
+    // ④ 接口视图 -> OSPF / ACL / MST 域视图
+    vX('interface GE1/0/1');
+    vjR = vX('ospf 1');
+    ok(!vjR.err && vP() === '[VJSW-ospf-1]', '④ 接口视图跳 OSPF 视图', vP());
+    vX('quit');
+    vX('interface GE1/0/1');
+    vjR = vX('acl number 3000');
+    ok(!vjR.err && vP() === '[VJSW-acl-advanced-3000]', '④ 接口视图跳 ACL 视图', vP());
+    vX('quit');
+    vX('interface GE1/0/1');
+    vjR = vX('stp region-configuration');
+    ok(!vjR.err && vP() === '[VJSW-mst-region]', '④ 接口视图跳 MST 域视图', vP());
+    vX('quit');
+    ok(vP() === '[VJSW]', '④ 各子视图 quit 均回系统视图', vP());
+
+    // ⑤ OSPF 视图内 area 仍为压栈（父子视图语义不变）
+    vX('ospf 1');
+    vX('area 0.0.0.0');
+    ok(vP() === '[VJSW-ospf-1-area-0.0.0.0]', '⑤ ospf 内 area 压栈', vP());
+    vX('quit');
+    ok(vP() === '[VJSW-ospf-1]', '⑤ area quit 回 OSPF 视图', vP());
+
+    // ⑥ 深层视图跳系统级子视图：整栈重置 user→system→vlan
+    vX('vlan 99');
+    ok(vP() === '[VJSW-vlan99]', '⑥ 深层视图跳 vlan 成功', vP());
+    vX('quit');
+    ok(vP() === '[VJSW]', '⑥ 深层跳转后 quit 回系统视图（栈已重置）', vP());
+
+    // ⑦ vlan 视图互跳
+    vX('vlan 20');
+    vX('vlan 30');
+    ok(vP() === '[VJSW-vlan30]', '⑦ vlan 视图内 vlan 30 互跳替换', vP());
+    vX('quit');
+    ok(vP() === '[VJSW]', '⑦ vlan 互跳后 quit 回系统视图', vP());
+
+    // ⑧ 用户视图下导航命令仍被拒绝（需先 system-view）
+    vX('return');
+    vjR = vX('vlan 10');
+    ok(vjR.err, '⑧ 用户视图 vlan 10 仍报错（真机行为）');
+    vjR = vX('interface GE1/0/1');
+    ok(vjR.err, '⑧ 用户视图 interface 仍报错（真机行为）');
+
+    // ⑨ 接口视图下 display 等 global 命令不受影响
+    vX('system-view');
+    vX('interface GE1/0/1');
+    vjR = vX('display interface brief');
+    ok(!vjR.err, '⑨ 接口视图 display interface brief 仍可用');
+    vX('quit');
+  } catch (e15) {
+    ok(false, '视图跳转（1.8.1）断言', e15.message + ' | ' + ((e15.stack || '').split('\n')[1] || ''));
   }
 
   /* ---------------- 汇总 ---------------- */
