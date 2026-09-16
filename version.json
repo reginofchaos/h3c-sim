@@ -4,10 +4,20 @@
   "author": "烧坏的内存条",
   "contact": "zyztonorrow@qq.com",
   "github": "https://github.com/reginofchaos/h3c-sim",
-  "version": "1.9.1",
+  "version": "1.9.2",
   "updated": "2026-09-15",
   "license": "教学用途 · 自由用于课堂实验",
   "changelog": [
+    {
+      "version": "1.9.2",
+      "date": "2026-09-15",
+      "title": "发版缓存根治：index.html 资源引用加 ?v=版本号 强制回源",
+      "changes": [
+        "根治「更新后浏览器/CDN 仍缓存旧 JS、导致新旧版本混用」的问题：index.html 内全部 22 个 script 引用与 1 个 link 引用统一追加 ?v=1.9.2 查询参数，每次发版 URL 变化、浏览器/CDN 强制回源，彻底避免 1.9.1 出现的「更新日志已新版、命令行为仍是旧版」缓存混杂现象",
+        "本次本身无命令/引擎逻辑改动；1.9.1 已支持任意配置子视图互相直接跳转（含 vlan ↔ interface / ospf / acl 等），所遇报错系旧 JS 缓存所致，强制回源后普通刷新即可生效",
+        "回归测试 verify.js 维持 472 项断言全通过（新增 24 项任意视图互跳断言）"
+      ]
+    },
     {
       "version": "1.9.1",
       "date": "2026-09-15",
