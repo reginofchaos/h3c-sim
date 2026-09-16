@@ -1804,6 +1804,82 @@ function run() {
     ok(false, '视图跳转（1.8.1）断言', e15.message + ' | ' + ((e15.stack || '').split('\n')[1] || ''));
   }
 
+  /* ================= 十六、任意视图互跳（用户诉求：任意配置子视图应可互相直接跳转） ================= */
+  try {
+    S.clearAll();
+    const aDev = S.addDevice('S5130-28S-EI', 'AVSW', 100, 100);
+    const aSess = () => S.getSession(aDev.id);
+    const aX = (cmd) => E.exec(aDev, aSess(), cmd);
+    const aP = () => E.promptFor(aDev, aSess());
+    aX('system-view');
+
+    // 反向跳转：从 vlan 视图跳到 interface / VLANIF / ospf / acl / mst（用户报的问题方向）
+    aX('vlan 10');
+    let r = aX('interface GE1/0/1');
+    ok(!r.err && aP() === '[AVSW-GE1/0/1]', '十六、vlan 视图 -> 接口视图（用户报的问题方向）', aP());
+    aX('quit'); ok(aP() === '[AVSW]', '十六、vlan->interface 后一次 quit 回系统视图');
+
+    aX('vlan 10');
+    r = aX('interface vlan-interface 10');
+    ok(!r.err && aP() === '[AVSW-VLAN10]', '十六、vlan 视图 -> VLANIF 视图');
+    aX('quit'); ok(aP() === '[AVSW]', '十六、vlan->VLANIF 后回系统视图');
+
+    aX('vlan 10');
+    r = aX('ospf 1');
+    ok(!r.err && aP() === '[AVSW-ospf-1]', '十六、vlan 视图 -> OSPF 视图');
+    aX('quit'); ok(aP() === '[AVSW]', '十六、vlan->ospf 后回系统视图');
+
+    aX('vlan 10');
+    r = aX('acl number 3000');
+    ok(!r.err && aP() === '[AVSW-acl-advanced-3000]', '十六、vlan 视图 -> ACL 视图');
+    aX('quit'); ok(aP() === '[AVSW]', '十六、vlan->acl 后回系统视图');
+
+    aX('vlan 10');
+    r = aX('stp region-configuration');
+    ok(!r.err && aP() === '[AVSW-mst-region]', '十六、vlan 视图 -> MST 域视图');
+    aX('quit'); ok(aP() === '[AVSW]', '十六、vlan->mst 后回系统视图');
+
+    // 反向：ospf 视图 -> vlan / interface
+    aX('ospf 1');
+    r = aX('vlan 20');
+    ok(!r.err && aP() === '[AVSW-vlan20]', '十六、OSPF 视图 -> vlan 视图');
+    aX('quit'); ok(aP() === '[AVSW]', '十六、ospf->vlan 后回系统视图');
+
+    aX('ospf 1');
+    r = aX('interface GE1/0/2');
+    ok(!r.err && aP() === '[AVSW-GE1/0/2]', '十六、OSPF 视图 -> 接口视图');
+    aX('quit'); ok(aP() === '[AVSW]', '十六、ospf->interface 后回系统视图');
+
+    // 反向：acl 视图 -> vlan / interface
+    aX('acl number 3000');
+    r = aX('vlan 30');
+    ok(!r.err && aP() === '[AVSW-vlan30]', '十六、ACL 视图 -> vlan 视图');
+    aX('quit'); ok(aP() === '[AVSW]', '十六、acl->vlan 后回系统视图');
+
+    aX('acl number 3000');
+    r = aX('interface GE1/0/3');
+    ok(!r.err && aP() === '[AVSW-GE1/0/3]', '十六、ACL 视图 -> 接口视图');
+    aX('quit'); ok(aP() === '[AVSW]', '十六、acl->interface 后回系统视图');
+
+    // 反向：mst 域视图 -> vlan
+    aX('stp region-configuration');
+    r = aX('vlan 40');
+    ok(!r.err && aP() === '[AVSW-vlan40]', '十六、MST 域视图 -> vlan 视图');
+    aX('quit'); ok(aP() === '[AVSW]', '十六、mst->vlan 后回系统视图');
+
+    // 任意两个子视图互跳（ospf <-> acl）
+    aX('ospf 1');
+    r = aX('acl number 3001');
+    ok(!r.err && aP() === '[AVSW-acl-advanced-3001]', '十六、OSPF 视图 -> ACL 视图');
+    aX('quit'); ok(aP() === '[AVSW]', '十六、ospf->acl 后回系统视图');
+    aX('acl number 3001');
+    r = aX('ospf 2');
+    ok(!r.err && aP() === '[AVSW-ospf-2]', '十六、ACL 视图 -> OSPF 视图');
+    aX('quit'); ok(aP() === '[AVSW]', '十六、acl->ospf 后回系统视图');
+  } catch (e16) {
+    ok(false, '任意视图互跳断言', e16.message + ' | ' + ((e16.stack || '').split('\n')[1] || ''));
+  }
+
   /* ---------------- 汇总 ---------------- */
   console.log('\n================ 汇总 ================');
   console.log('PASS: ' + pass + '   FAIL: ' + fail);
