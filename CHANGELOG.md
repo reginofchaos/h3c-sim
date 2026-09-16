@@ -2,6 +2,11 @@
 
 > 迭代版本号自 **1.0.0** 起，按日汇总版本跨度；回滚的修改不记录。
 
+## [1.9.2] — 2026-09-15 · 发版缓存根治：index.html 资源引用加 ?v=版本号 强制回源
+- **根治「更新后浏览器/CDN 仍缓存旧 JS、导致新旧版本混用」的问题**：`index.html` 内全部 **22 个 script 引用与 1 个 link 引用**统一追加 `?v=1.9.2` 查询参数，每次发版 URL 变化、浏览器/CDN **强制回源**，彻底避免 1.9.1 出现的「更新日志已是新版、命令行为仍是旧版」缓存混杂现象
+- **本次本身无命令/引擎逻辑改动**：1.9.1 已支持任意配置子视图互相直接跳转（含 `vlan ↔ interface` / `ospf` / `acl` 等），所遇报错系旧 JS 缓存所致，强制回源后普通刷新即可生效
+- 回归测试 `verify.js` 维持 **472** 项断言全通过（新增 24 项任意视图互跳断言）
+
 ## [1.9.1] — 2026-09-15 · 视图跳转修复：任意配置视图可直达 vlan/ospf/acl 等子视图
 - **修复核心 bug**：接口视图下输入 `vlan 10` 报 `Unrecognized command found at '^' position.` 的问题。视图导航命令（`vlan` / `interface` / `ospf` / `rip` / `bgp` / `isis` / `acl` / `local-user` / `user-interface` / `line` / `dhcp server ip-pool` / `stp region-configuration` / `qos policy` / `traffic classifier` / `traffic behavior` 等共 **36 条**）现在可在**任意配置视图**下直接执行，与真机 Comware 行为一致
 - **视图栈语义对齐真机**：从非系统视图（接口 / VLAN / 深层子视图）跳转系统级子视图时，整个视图栈重置为 `用户→系统→新视图`，一次 `quit` 即回到系统视图；OSPF 区域等父子嵌套视图仍保持压栈语义
