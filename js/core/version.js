@@ -11,11 +11,22 @@
     author: '烧坏的内存条',
     contact: 'zyztonorrow@qq.com',
     github: 'https://github.com/reginofchaos/h3c-sim',
-    version: '1.9.2',
+    version: '1.9.3',
     updated: '2026-09-15',
     license: '教学用途 · 自由用于课堂实验',
     // 按日汇总的版本跨度；index 0 为最新版本
     changelog: [
+      {
+        version: '1.9.3',
+        date: '2026-09-15',
+        title: "转发引擎修复：不对称 trunk↔access 链路 native-VLAN 错划导致跨 VLAN 假通",
+        changes: [
+          "修复用户反馈的 VLAN 隔离缺陷：一侧端口为 trunk（native vlan 默认 1）、对端为 access（属于另一 vlan）的不对称互联链路，此前引擎报错「两端 PC 能互通」。真实 H3C 上请求方向 trunk 带标发出、access 按 PVID 收下看似可达，但回程 access 发不标帧被对端 trunk 按 native vlan 错划，回包到不了，ping 实际不通。引擎 walkToTarget() 这条独立的二层中继 BFS 此前未建模 native-VLAN 接管，导致回程穿透错判为可达",
+          "新增方向感知的 native-VLAN 检查 linkCarriesVlan()：l2Domain() 与 walkToTarget() 两条路径统一调用——当本端以不标方式发出某 vlan 帧、而对端 trunk/hybrid 的 native vlan 与之不同时，该链路不可中继（与真实交换机一致）",
+          "验证：tools/probe_vlan2.js 复现该拓扑，修复前 PC1↔PC2 假通、修复后两向均不通（与真机一致），对照（两端 native vlan 均对齐为 10）仍互通",
+          "回归测试 verify.js 维持 475 项断言全通过，既有「PC → 接入交换机 → 三层核心」两级组网转发（1.7.9 特性）未受影响"
+        ]
+      },
       {
         version: '1.9.2',
         date: '2026-09-15',
