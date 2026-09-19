@@ -2,6 +2,12 @@
 
 > 迭代版本号自 **1.0.0** 起，按日汇总版本跨度；回滚的修改不记录。
 
+## [1.9.3] — 2026-09-15 · 转发引擎修复：不对称 trunk↔access 链路 native-VLAN 错划导致跨 VLAN 假通
+- **修复用户反馈的 VLAN 隔离缺陷**：一侧端口为 trunk（native vlan 默认 1）、对端为 access（属于另一 vlan）的不对称互联链路，此前引擎报错「两端 PC 能互通」。真实 H3C 上请求方向 trunk 带标发出、access 按 PVID 收下看似可达，但回程 access 发不标帧被对端 trunk 按 native vlan 错划，回包到不了，ping 实际不通。引擎 `walkToTarget()` 这条独立的二层中继 BFS 此前未建模 native-VLAN 接管，导致回程穿透错判为可达
+- **新增方向感知的 native-VLAN 检查 `linkCarriesVlan()`**：`l2Domain()` 与 `walkToTarget()` 两条路径统一调用——当本端以不标方式发出某 vlan 帧、而对端 trunk/hybrid 的 native vlan 与之不同时，该链路不可中继（与真实交换机一致）
+- **验证**：`tools/probe_vlan2.js` 复现该拓扑，修复前 PC1↔PC2 假通、修复后两向均不通（与真机一致），对照（两端 native vlan 均对齐为 10）仍互通
+- 回归测试 `verify.js` 维持 **475** 项断言全通过，既有「PC → 接入交换机 → 三层核心」两级组网转发（1.7.9 特性）未受影响
+
 ## [1.9.2] — 2026-09-15 · 发版缓存根治：index.html 资源引用加 ?v=版本号 强制回源
 - **根治「更新后浏览器/CDN 仍缓存旧 JS、导致新旧版本混用」的问题**：`index.html` 内全部 **22 个 script 引用与 1 个 link 引用**统一追加 `?v=1.9.2` 查询参数，每次发版 URL 变化、浏览器/CDN **强制回源**，彻底避免 1.9.1 出现的「更新日志已是新版、命令行为仍是旧版」缓存混杂现象
 - **本次本身无命令/引擎逻辑改动**：1.9.1 已支持任意配置子视图互相直接跳转（含 `vlan ↔ interface` / `ospf` / `acl` 等），所遇报错系旧 JS 缓存所致，强制回源后普通刷新即可生效
