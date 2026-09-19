@@ -1880,6 +1880,60 @@ function run() {
     ok(false, '任意视图互跳断言', e16.message + ' | ' + ((e16.stack || '').split('\n')[1] || ''));
   }
 
+  /* ---------------- VLAN 隔离回归（不同 VLAN 经 access 互联链路不可互通） ---------------- */
+  /* 复现用户工程 vlan测试.json：两交换机互联口为 access vlan1，PC1 在 vlan10、PC2 在 vlan1，
+     理论上二层隔离、两 PC 不应互通；反向对照同 vlan + trunk 应互通。
+     守护点：转发引擎 l2Domain 必须按入端口 PVID/permitVlans 过滤 VLAN，
+     否则会出现"不同 VLAN 经 access 互联仍能 ping 通"的隔离失效 bug。 */
+  console.log('\n=== VLAN 隔离回归：不同 VLAN 经 access 互联链路不可互通 ===');
+  try {
+    S.clearAll();
+    const sw1 = S.addDevice('S5130-28S-EI', 'SW1', 0, 0);
+    const sw2 = S.addDevice('S5130-28S-EI', 'SW2', 0, 200);
+    const pc1 = S.addDevice('PC', 'PC1', -200, 0);
+    const pc2 = S.addDevice('PC', 'PC2', 200, 200);
+    // 关闭 STP，使本测试纯粹验证 VLAN 而非生成树（避免单链路被判阻塞带来的不确定性）
+    sw1.cfg.stp.enable = false; sw2.cfg.stp.enable = false;
+    // 拓扑：互联口 access vlan1（默认）；PC1 接 SW1-2，PC2 接 SW2-2
+    S.addLink(sw1.id, 'GE1/0/1', sw2.id, 'GE1/0/1');
+    S.addLink(sw1.id, 'GE1/0/2', pc1.id, 'GE0/1');
+    S.addLink(sw2.id, 'GE1/0/2', pc2.id, 'GE0/1');
+    // SW1-2 -> access vlan10（PC1 落入 vlan10）
+    sw1.cfg.ifaces['GE1/0/2'].linkType = 'access';
+    sw1.cfg.ifaces['GE1/0/2'].accessVlan = 10;
+    sw1.cfg.ifaces['GE1/0/2'].pvid = 10;
+    sw1.cfg.ifaces['GE1/0/2'].permitVlans = [10];
+    // PC 配置 IP（会让 host.js 把网卡置为 route 模式，按对端 access VLAN 参与二层域）
+    function setPcIp(pc, addr) {
+      var f = pc.cfg.ifaces['GE0/1'];
+      f.mode = 'route'; f.linkType = 'access'; f.accessVlan = 1; f.pvid = 1; f.permitVlans = [1];
+      f.ip = { addr: addr, mask: '255.255.255.0' };
+    }
+    setPcIp(pc1, '192.168.1.1');
+    setPcIp(pc2, '192.168.1.2');
+    // SW2-2 保持默认 access vlan1（PC2 落入 vlan1）
+    H.Sim.invalidate();
+
+    const rA = H.Sim.ping(pc1, '192.168.1.2', { count: 2 });
+    ok(rA.ok === false, 'VLAN10 的 PC1 经 access-vlan1 互联链路无法 ping 通 VLAN1 的 PC2', 'ok=' + rA.ok);
+    const rB = H.Sim.ping(pc2, '192.168.1.1', { count: 2 });
+    ok(rB.ok === false, '反向：VLAN1 的 PC2 亦无法 ping 通 VLAN10 的 PC1', 'ok=' + rB.ok);
+
+    // 正向对照：两 PC 同置 vlan10 + 互联改 trunk 放行 1,10 → 应可互通
+    sw2.cfg.ifaces['GE1/0/2'].accessVlan = 10;
+    sw2.cfg.ifaces['GE1/0/2'].pvid = 10;
+    sw2.cfg.ifaces['GE1/0/2'].permitVlans = [10];
+    [sw1, sw2].forEach(function (sw) {
+      var f = sw.cfg.ifaces['GE1/0/1'];
+      f.linkType = 'trunk'; f.accessVlan = 1; f.pvid = 1; f.permitVlans = [1, 10]; f.untaggedVlans = [1];
+    });
+    H.Sim.invalidate();
+    const rC = H.Sim.ping(pc1, '192.168.1.2', { count: 2 });
+    ok(rC.ok === true, '对照：两 PC 同属 VLAN10 且互联 trunk 放行后可互通（证明 noroute 确由 VLAN 隔离造成）', 'ok=' + rC.ok);
+  } catch (eVLAN) {
+    ok(false, 'VLAN 隔离回归断言', (eVLAN && eVLAN.message) || String(eVLAN));
+  }
+
   /* ---------------- 汇总 ---------------- */
   console.log('\n================ 汇总 ================');
   console.log('PASS: ' + pass + '   FAIL: ' + fail);
