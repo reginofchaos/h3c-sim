@@ -314,6 +314,9 @@
         var pd = S.getDevice(lnk.dev); if (!pd) continue;
         if (!portUp(pd, lnk.port)) continue;
         if (!portHasVlan(pd, lnk.port, vlan)) continue;
+        // 方向感知 native-VLAN 检查（见 linkCarriesVlan）：本端以「不标」方式发该 vlan 帧时，
+        // 对端 trunk/hybrid 的 native vlan 必须一致，否则帧被错划 VLAN、跨不过去（真实交换机同样隔离）
+        if (!linkCarriesVlan(d, pn, vlan)) continue;
         if (res[pd.id]) continue;
         res[pd.id] = { hops: cur.hops + 1, dev: pd.id, from: d.id, viaPort: pn, peerPort: lnk.port };
         q.push({ dev: pd, port: lnk.port, hops: cur.hops + 1 });
@@ -1237,6 +1240,26 @@
   }
   Sim.relayVlans = relayVlans;
 
+  /* 方向感知 native-VLAN 检查：dev 从 portName 发出「vlan 帧」时，对端能否按 vlan 正确接收？
+     返回 true=链路可承载、false=对端 trunk/hybrid 的 native vlan 与 vlan 不同、帧会被错划（真实交换机同样隔离）。
+     host(route) 对端不重打标签、access 对端已由 portHasVlan 过滤、BAGG 聚合口不做此检查。 */
+  function linkCarriesVlan(dev, portName, vlan) {
+    if (/^BAGG/.test(portName)) return true;
+    var sf = iface(dev, portName); if (!sf) return true;
+    var sendsTagged;
+    if (sf.linkType === 'trunk') sendsTagged = (Number(sf.pvid) !== Number(vlan));
+    else if (sf.linkType === 'hybrid') sendsTagged = ((sf.untaggedVlans || []).indexOf(Number(vlan)) < 0);
+    else sendsTagged = false; // access / route(host) 均不带标签
+    if (sendsTagged) return true; // 带标签发出，对端按标签接收，不会错划
+    var pr = S.getPeer(dev.id, portName); if (!pr) return true;
+    var pd = S.getDevice(pr.dev); if (!pd) return true;
+    var rf = iface(pd, pr.port); if (!rf) return true;
+    if (rf.mode === 'route') return true;
+    if (rf.linkType === 'trunk' || rf.linkType === 'hybrid') return Number(rf.pvid) === Number(vlan);
+    return true; // 对端 access：由 portHasVlan 已确保 accessVlan===vlan
+  }
+  Sim.linkCarriesVlan = linkCarriesVlan;
+
   /* 从 dev 的 portName 发出后，沿二层域下行找到真正拥有 target 的设备。
      只有"不存在任何三层地址"的纯二层设备才会被穿透，三层设备一律视为终点。
      返回 { localPort, peerDev, peerIf, relay } 或 null */
@@ -1247,6 +1270,8 @@
     if (!pr) return null;
     var pd = S.getDevice(pr.dev);
     if (!pd) return null;
+    // 进入对端的链路本身也必须能正确承载该 vlan（native-vlan 方向感知）
+    if (vlan != null && !linkCarriesVlan(dev, portName, vlan)) return null;
     if (seen && seen[pd.id]) return null;
     if (ownerIface(pd, target)) {
       return { localPort: portName, peerDev: pd.id, peerIf: pr.port, relay: depth };
@@ -1257,6 +1282,8 @@
       var outs = portsInVlan(pd, vlist[vi], true);
       for (var i = 0; i < outs.length; i++) {
         if (outs[i] === pr.port) continue;
+        // 中继链路方向感知：pd 从 outs[i] 发出 vlist[vi] 帧，对端需能按该 vlan 接收
+        if (!linkCarriesVlan(pd, outs[i], vlist[vi])) continue;
         var s2 = {};
         if (seen) Object.keys(seen).forEach(function (k) { s2[k] = 1; });
         s2[dev.id] = 1; s2[pd.id] = 1;
